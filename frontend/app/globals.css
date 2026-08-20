@@ -1,0 +1,358 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f8f8;
+  --panel-bg: #ffffff;
+  --text: #1a2420;
+  --text-muted: #6b7680;
+  --border: #e6e9ea;
+
+  --teal: #0d9488;
+  --teal-dark: #0f766e;
+  --teal-tint: #e3f6f1;
+  --on-teal: #ffffff;
+
+  --bubble-user-bg: #e3f6f1;
+  --bubble-user-text: #123a33;
+  --bubble-assistant-bg: #ffffff;
+  --bubble-assistant-text: #1a2420;
+
+  --danger: #d92d20;
+  --danger-bg: #fde9e7;
+  --warning: #b25e09;
+  --warning-bg: #fdf1dc;
+  --success: #0f766e;
+  --success-bg: #e3f6f1;
+
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 6px rgba(16, 24, 40, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101513;
+    --panel-bg: #171d1a;
+    --text: #eef2f0;
+    --text-muted: #93a19b;
+    --border: #262f2b;
+
+    --teal: #2dd4bf;
+    --teal-dark: #14b8a6;
+    --teal-tint: #163530;
+    --on-teal: #06201b;
+
+    --bubble-user-bg: #163530;
+    --bubble-user-text: #d7f3ec;
+    --bubble-assistant-bg: #1c231f;
+    --bubble-assistant-text: #eef2f0;
+
+    --danger: #f97066;
+    --danger-bg: #3a1a18;
+    --warning: #f0a94e;
+    --warning-bg: #3a2c14;
+    --success: #2dd4bf;
+    --success-bg: #123430;
+
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------- header ---------- */
+
+.brand-icon {
+  color: var(--teal);
+}
+
+.brand-name {
+  color: var(--teal-dark);
+}
+
+.lang-pill,
+.pill-btn {
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+.pill-btn:hover {
+  border-color: var(--teal);
+}
+
+.pill-btn-primary {
+  border-color: var(--teal);
+  color: var(--teal-dark);
+}
+
+.pill-btn-primary:hover {
+  background: var(--teal-tint);
+}
+
+.icon-btn {
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+.icon-btn:hover {
+  border-color: var(--teal);
+}
+
+/* ---------- urgency banner ---------- */
+
+.urgency-banner.emergency {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.urgency-banner.soon {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.urgency-banner.home {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.urgency-dot {
+  background: currentColor;
+}
+
+/* ---------- messages ---------- */
+
+.date-separator {
+  background: var(--teal-tint);
+  color: var(--teal-dark);
+}
+
+.avatar-assistant {
+  background: var(--teal);
+  color: var(--on-teal);
+}
+
+.avatar-user {
+  background: var(--teal-tint);
+  color: var(--teal-dark);
+  border: 1.5px solid var(--teal);
+}
+
+.avatar-label,
+.bubble-meta {
+  color: var(--text-muted);
+}
+
+.bubble-user {
+  background: var(--bubble-user-bg);
+  color: var(--bubble-user-text);
+}
+
+.bubble-assistant {
+  background: var(--bubble-assistant-bg);
+  color: var(--bubble-assistant-text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.bubble p {
+  margin: 0 0 8px;
+}
+
+.bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.bubble ul.bubble-list {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.bubble ul.bubble-list:last-child {
+  margin-bottom: 0;
+}
+
+.bubble ul.bubble-list li {
+  margin-bottom: 4px;
+}
+
+.bubble ul.bubble-list li::marker {
+  color: var(--teal);
+}
+
+.bubble-note {
+  border: 1px dashed var(--border);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.bubble-note strong {
+  color: var(--text);
+}
+
+.ticks {
+  color: var(--teal);
+}
+
+.typing-dots span {
+  background: var(--text-muted);
+  animation: blink 1.2s infinite;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* ---------- composer ---------- */
+
+.composer {
+  border-top: 1px solid var(--border);
+  background: var(--panel-bg);
+}
+
+.mode-toggle {
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.mode-pill {
+  color: var(--text-muted);
+}
+
+.mode-pill.active {
+  background: var(--panel-bg);
+  color: var(--teal-dark);
+  border: 1px solid var(--teal);
+  box-shadow: var(--shadow);
+}
+
+#messageInput,
+.message-input {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.message-input:focus {
+  outline: 2px solid var(--teal);
+  outline-offset: -1px;
+}
+
+.send-btn {
+  background: var(--teal);
+  color: var(--on-teal);
+}
+
+.send-btn:hover:not(:disabled) {
+  background: var(--teal-dark);
+}
+
+.send-btn:disabled {
+  opacity: 0.55;
+}
+
+.mic-standalone {
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+.mic-standalone:hover {
+  border-color: var(--teal);
+}
+
+.mic-standalone.recording {
+  border-color: var(--danger);
+  color: var(--danger);
+  animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--danger-bg);
+  }
+  50% {
+    box-shadow: 0 0 0 6px var(--danger-bg);
+  }
+}
+
+.disclaimer {
+  color: var(--text-muted);
+}
+
+/* ---------- settings panel ---------- */
+
+.settings-panel {
+  border-left: 1px solid var(--border);
+  background: var(--panel-bg);
+}
+
+.settings-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-hint code {
+  background: var(--bg);
+}
+
+.switch {
+  border: 1px solid var(--border);
+}
+
+.switch-option:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.switch-option input {
+  accent-color: var(--teal);
+}
+
+.kb-input {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.doc-item {
+  border: 1px solid var(--border);
+}
+
+.doc-item .doc-meta,
+.doc-empty,
+.upload-status {
+  color: var(--text-muted);
+}
+
+.doc-delete {
+  color: var(--danger);
+}
