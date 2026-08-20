@@ -3,10 +3,13 @@ the Conversation Agent's draft reply. Checks for drug names, dosages,
 and diagnostic overreach before anything goes out to the user.
 """
 
+import logging
 from typing import Any
 
 import config
 from groq_client import chat_json
+
+logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = """You are the Safety Agent for a pet-health triage assistant. \
 You review a draft reply before it is sent to a pet owner. Flag it as failing if \
@@ -37,4 +40,5 @@ def run_safety_check(draft_reply: str) -> dict[str, Any]:
         # Fail closed: if the safety check itself breaks, treat the draft
         # as not-passed so the caller falls back to a canned safe message
         # rather than silently skipping the guardrail.
+        logger.exception("run_safety_check: Groq call failed, failing closed")
         return {"passed": False, "violations": [f"safety_check_error: {exc}"]}

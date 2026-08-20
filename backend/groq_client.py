@@ -23,6 +23,30 @@ def _get_client() -> Groq:
     return _client
 
 
+def _unwrap_accidental_json(text: str) -> str:
+    """Some models occasionally wrap a plain-text answer in a JSON object
+    (e.g. {"reply": "..."}) even when no response_format was requested.
+    If that happens, pull the actual message back out rather than passing
+    raw JSON through to the user as if it were prose."""
+    stripped = text.strip()
+    if not (stripped.startswith("{") and stripped.endswith("}")):
+        return text
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        return text
+    if not isinstance(parsed, dict):
+        return text
+
+    string_values = [v for v in parsed.values() if isinstance(v, str)]
+    if len(string_values) == 1:
+        return string_values[0]
+    for key in ("reply", "response", "answer", "message", "text", "content"):
+        if isinstance(parsed.get(key), str):
+            return parsed[key]
+    return text
+
+
 def chat(
     model: str,
     system_prompt: str,
@@ -47,7 +71,10 @@ def chat(
         kwargs["response_format"] = {"type": "json_object"}
 
     completion = client.chat.completions.create(**kwargs)
-    return completion.choices[0].message.content or ""
+    content = completion.choices[0].message.content or ""
+    if json_mode:
+        return content
+    return _unwrap_accidental_json(content)
 
 
 def chat_json(

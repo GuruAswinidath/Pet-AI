@@ -3,10 +3,13 @@ judgment. Its only job is deciding which agent handles this turn; it owns
 conversation flow, not medical content.
 """
 
+import logging
 from typing import Any
 
 import config
 from groq_client import chat_json
+
+logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = """You are the routing layer for a pet-health triage assistant. \
 You do not give medical advice and you never decide urgency. For each user \
@@ -47,4 +50,5 @@ def route_turn(session: dict[str, Any], user_message: str) -> dict[str, str]:
     except Exception:
         # When in doubt, route to the safety-checked triage path rather
         # than letting an unclassified message slip to the Knowledge Agent.
+        logger.exception("route_turn: Groq call failed, defaulting to triage")
         return {"route": "triage", "reasoning": "routing failed, defaulted to triage"}

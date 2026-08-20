@@ -11,7 +11,7 @@ SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 # retired/renamed Groq model ID doesn't require a code change.
 ORCHESTRATOR_MODEL = os.getenv("ORCHESTRATOR_MODEL", "openai/gpt-oss-20b")
 INTAKE_MODEL = os.getenv("INTAKE_MODEL", "openai/gpt-oss-120b")
-CONVERSATION_MODEL = os.getenv("CONVERSATION_MODEL", "llama-3.3-70b-versatile")
+CONVERSATION_MODEL = os.getenv("CONVERSATION_MODEL", "openai/gpt-oss-120b")
 SAFETY_MODEL = os.getenv("SAFETY_MODEL", "openai/gpt-oss-safeguard-20b")
 NOTE_MODEL = os.getenv("NOTE_MODEL", "openai/gpt-oss-20b")
 KNOWLEDGE_MODEL = os.getenv("KNOWLEDGE_MODEL", "openai/gpt-oss-120b")

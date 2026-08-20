@@ -6,11 +6,14 @@ missing.
 """
 
 import json
+import logging
 from typing import Any
 
 import config
 from groq_client import chat
 from triage_kb import TRIAGE_KB
+
+logger = logging.getLogger(__name__)
 
 _BASE_RULES = """You are the Conversation Agent for a pet-health triage assistant. \
 Rules that never change:
@@ -39,6 +42,7 @@ def ask_clarifying_question(session: dict[str, Any], missing_info: list[str]) ->
     try:
         return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.4, max_tokens=200)
     except Exception:
+        logger.exception("ask_clarifying_question: Groq call failed, using canned fallback")
         return _fallback_clarifying_question(session.get("language_code"))
 
 
@@ -77,6 +81,7 @@ home_care, and mention what would be a reason to seek a vet if it changes."""
     try:
         return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.4, max_tokens=350)
     except Exception:
+        logger.exception("draft_reply: Groq call failed, using canned fallback")
         return _fallback_reply(urgency, session.get("language_code"))
 
 
@@ -98,6 +103,7 @@ urgency level and guidance. Do not mention the safety review to the user."""
     try:
         return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.3, max_tokens=350)
     except Exception:
+        logger.exception("regenerate_with_flag: Groq call failed, using canned fallback")
         return _fallback_reply(session.get("urgency") or "soon", session.get("language_code"))
 
 

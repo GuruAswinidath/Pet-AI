@@ -5,11 +5,14 @@ the entire point of this agent (README section 2.1).
 """
 
 import json
+import logging
 from typing import Any
 
 import config
 from groq_client import chat_json
 from triage_kb import TRIAGE_KB
+
+logger = logging.getLogger(__name__)
 
 _KNOWN_SYMPTOMS = "\n".join(f"- {key}: {entry['label']}" for key, entry in TRIAGE_KB.items())
 
@@ -60,6 +63,7 @@ def extract_fields(session: dict[str, Any], user_message: str) -> dict[str, Any]
         # Fail safe: no structured extraction, but don't crash the turn -
         # the Triage Engine will see an empty symptom list and respond
         # with a cautious "soon" + missing_info, not silence.
+        logger.exception("extract_fields: Groq call failed, returning empty extraction")
         result = {"species": None, "breed": None, "age": None, "symptoms": [], "additional_notes": None}
 
     result.setdefault("species", None)

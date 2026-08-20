@@ -9,11 +9,18 @@ in retrieved chunks from rag_store.py and is instructed to say "I don't
 have that information" rather than guess when retrieval is empty/irrelevant.
 """
 
+import logging
 from typing import Any
 
 import config
 from groq_client import chat
 from rag_store import retrieve
+
+logger = logging.getLogger(__name__)
+
+_FALLBACK_ANSWER = (
+    "Sorry, I couldn't reach the knowledge model just now. Please try asking again in a moment."
+)
 
 _LLM_ONLY_SYSTEM_PROMPT = """You are the Knowledge Agent for a pet-care assistant. \
 Answer general, non-urgent informational questions about pet care, breeds, and \
@@ -44,7 +51,11 @@ Never mention specific drug names or dosages. Keep answers concise (3-6 sentence
 
 def generate_llm_only_answer(query: str, language_code: str | None) -> str:
     user_prompt = f"language_code: {language_code or 'en-IN'}\nQuestion: {query}"
-    return chat(config.KNOWLEDGE_MODEL, _LLM_ONLY_SYSTEM_PROMPT, user_prompt, temperature=0.3, max_tokens=400)
+    try:
+        return chat(config.KNOWLEDGE_MODEL, _LLM_ONLY_SYSTEM_PROMPT, user_prompt, temperature=0.3, max_tokens=400)
+    except Exception:
+        logger.exception("generate_llm_only_answer: Groq call failed")
+        return _FALLBACK_ANSWER
 
 
 def generate_rag_answer(query: str, language_code: str | None) -> dict[str, Any]:
@@ -59,7 +70,11 @@ def generate_rag_answer(query: str, language_code: str | None) -> dict[str, Any]
         f"language_code: {language_code or 'en-IN'}\n"
         f"Question: {query}\n\nReference excerpts:\n{excerpts_text}"
     )
-    answer = chat(config.KNOWLEDGE_MODEL, _RAG_SYSTEM_PROMPT, user_prompt, temperature=0.2, max_tokens=400)
+    try:
+        answer = chat(config.KNOWLEDGE_MODEL, _RAG_SYSTEM_PROMPT, user_prompt, temperature=0.2, max_tokens=400)
+    except Exception:
+        logger.exception("generate_rag_answer: Groq call failed")
+        return {"answer": _FALLBACK_ANSWER, "sources": chunks}
     return {"answer": answer, "sources": chunks}
 
 

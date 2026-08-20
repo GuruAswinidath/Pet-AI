@@ -4,10 +4,13 @@ the document, not the live conversation.
 """
 
 import json
+import logging
 from typing import Any
 
 import config
 from groq_client import chat_json
+
+logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = """You are the Note Agent for a pet-health triage assistant. \
 Given a completed session's structured state, write a short follow-up note a \
@@ -44,6 +47,7 @@ def generate_followup_note(session: dict[str, Any]) -> dict[str, Any]:
             max_tokens=500,
         )
     except Exception:
+        logger.exception("generate_followup_note: Groq call failed, using fallback note")
         note = _fallback_note(session)
 
     note.setdefault("urgency", session.get("urgency"))
