@@ -38,6 +38,16 @@ CORS_ORIGINS = [
     if origin.strip()
 ]
 
+# Railway (and most PaaS hosts) inject PORT and require binding to 0.0.0.0
+# to accept external traffic - 127.0.0.1 only accepts local-loopback
+# connections, which is safe for local dev but silently unreachable once
+# deployed (this is what actually caused a 404 on Railway, not a routing
+# or CORS issue). Presence of PORT is used as the "we're deployed" signal
+# so local `python app.py` behavior is unchanged unless overridden.
+PORT = int(os.getenv("PORT", "8000"))
+HOST = os.getenv("HOST", "0.0.0.0" if os.getenv("PORT") else "127.0.0.1")
+RELOAD = os.getenv("RELOAD", "false" if os.getenv("PORT") else "true").lower() == "true"
+
 RESULTS_DIR = os.getenv("RESULTS_DIR", "results")
 KB_STORE_DIR = os.getenv("KB_STORE_DIR", "kb_store")
 
