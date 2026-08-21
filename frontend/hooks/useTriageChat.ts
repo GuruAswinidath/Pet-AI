@@ -10,7 +10,7 @@ function newId(): string {
 }
 
 const WELCOME_TEXT =
-  'Hi, I\'m here to help you figure out how urgently your pet needs to see a vet. Tell me what\'s going on - for example, "my dog has been vomiting since this morning".';
+  'Hi, I\'m here to help you figure out how urgently your cat needs to see a vet. Tell me what\'s going on - for example, "my cat has been straining to pee since this morning".';
 
 function welcomeMessage(): ChatMessage {
   return { id: newId(), role: "assistant", text: WELCOME_TEXT, timestamp: Date.now(), kind: "normal" };
@@ -47,13 +47,15 @@ export function useTriageChat() {
       if (data.is_final && data.followup_note) {
         const note = data.followup_note;
         const lines = [
-          "Follow-up note",
-          note.summary ? `Summary: ${note.summary}` : null,
-          note.recommended_action ? `Recommended action: ${note.recommended_action}` : null,
+          "Consultation note (SOAP)",
           note.key_symptoms?.length ? `Key symptoms: ${note.key_symptoms.join(", ")}` : null,
+          note.subjective ? `S - Subjective: ${note.subjective}` : null,
+          note.objective ? `O - Objective: ${note.objective}` : null,
+          note.assessment ? `A - Assessment: ${note.assessment}` : null,
+          note.plan ? `P - Plan: ${note.plan}` : null,
           data.transcript_path ? `Transcript saved to: ${data.transcript_path}` : null,
         ].filter((l): l is string => Boolean(l));
-        pushMessage({ role: "assistant", text: lines.join("\n"), kind: "note" });
+        pushMessage({ role: "assistant", text: lines.join("\n\n"), kind: "note" });
       }
 
       if (data.audio_base64 && audioRef.current) {

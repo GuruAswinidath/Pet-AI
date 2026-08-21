@@ -23,7 +23,11 @@ def create_session(language_code: str = "en-IN") -> dict[str, Any]:
     session = {
         "session_id": session_id,
         "language_code": language_code or "en-IN",
-        "species": None,
+        # This assistant is cat-only, so every session starts assuming a
+        # cat - the Intake Agent only ever overwrites this to "other" when
+        # it detects a different animal, which turn_processor.py uses to
+        # redirect out of the triage flow (see process_turn).
+        "species": "cat",
         "breed": None,
         "age": None,
         "turns": [],

@@ -1,5 +1,36 @@
 # AI Vet Triage Chatbot — Multi-Agent Architecture Spec
 
+**Scope: cats only.** This prototype supports cats exclusively - every prompt, the
+triage knowledge base, and the test suite are written and reviewed for feline
+presentation specifically. See §10 for why that's not just a wording choice (several
+symptoms mean something meaningfully different in a cat than in a dog), and
+`turn_processor.py` for the out-of-scope redirect that fires if a message clearly
+describes a different animal.
+
+High-level flow (see §3 for the full multi-agent breakdown this simplifies):
+
+```
+Cat Parent Voice/Text
+   |
+   v
+Speech-to-Text (if voice)
+   |
+   v
+AI Veterinary Assistant (Orchestrator -> Intake -> Triage Engine -> Conversation -> Safety)
+   |
+   v
+Cat Health Knowledge Retrieval (RAG, for general questions - see §5)
+   |
+   v
+Triage Decision (deterministic, never an LLM judgment call - see §1)
+   |
+   v
+Guidance Response
+   |
+   v
+SOAP Consultation Note (see §11)
+```
+
 ## 1. Design principle before anything else
 
 In an agent framework it's tempting to make everything "an agent." Don't.
@@ -99,7 +130,7 @@ Keep this simple and framework-agnostic — whatever agent framework you use (La
 {
   "session_id": "uuid",
   "language_code": "hi-IN",
-  "species": "dog",
+  "species": "cat",
   "breed": null,
   "age": null,
   "turns": [
@@ -126,15 +157,17 @@ This whole object is what the Note Agent reads at the end — the follow-up note
 Decision made: **the KB is not read from a spreadsheet or database at request time.** Instead, bake the (vet-reviewed) KB content directly into the Intake/Triage prompt as a static block — either as literal text in the system prompt, or as a Python constant/dict in code. Same grounding as a file-based lookup, zero I/O, nothing to wire up.
 
 ```python
-# triage_kb.py — vet-reviewed, static, versioned with your code
+# triage_kb.py — vet-reviewed, static, versioned with your code, cats only
 TRIAGE_KB = {
     "vomiting": {
-        "species": "both",
+        "label": "Vomiting",
+        "typical_triage_level": "varies",  # documentation only, see §10 - engine still decides dynamically
+        "questions_to_ask": ["Does the vomit contain hair, food, or fluid?", "..."],
         "red_flags": ["blood in vomit", "distended abdomen", "3+ times in a few hours", "lethargy"],
         "yellow_flags": ["persists past 24 hours"],
-        "home_care": "Withhold food a few hours (not water), monitor for repeat episodes.",
+        "owner_guidance": "Withhold food a few hours (not water), monitor for repeat episodes.",
     },
-    # ... rest of the ~16 entries
+    # ... rest of the ~17 entries, see §10
 }
 ```
 
@@ -146,13 +179,13 @@ The Triage Engine (§2, §6) is still a deterministic function — it just reads
 
 **For the triage decision itself: no, don't use RAG, and no database either (see §4.1).** Nothing changes here from the earlier recommendation. The Triage Engine should stay a deterministic lookup against the in-code KB (species + symptom → red/yellow flags + guidance), called as a tool. RAG introduces similarity-search fuzziness into exactly the one decision that needs to be predictable and auditable. If a vet reviews and approves "vomiting → these red flags," you want that exact entry retrieved every time someone says "throwing up," not a semantically-similar-but-not-identical entry pulled by embedding search.
 
-**Where RAG *does* earn its place: the optional Knowledge Agent.** If you want the chatbot to also answer general, non-urgent questions — "is it normal for puppies to lose baby teeth," "what's hip dysplasia," "how much should a 6-month-old kitten weigh" — that's a different job than triage, and a small RAG setup is a reasonable fit there:
+**Where RAG *does* earn its place: the optional Knowledge Agent.** If you want the chatbot to also answer general, non-urgent questions — "is it normal for kittens to lose baby teeth," "what's hyperthyroidism in cats," "how much should a 6-month-old kitten weigh" — that's a different job than triage, and a small RAG setup is a reasonable fit there:
 
-- **Corpus**: general vet reference material — breed guides, common-condition explainers, care guides. Public/licensed veterinary reference content, not your triage KB (keep those separate).
+- **Corpus**: general cat-care reference material — breed guides, common-condition explainers, care guides. Public/licensed veterinary reference content, not your triage KB (keep those separate). `backend/knowledge_docs/` (§10) is the seed corpus for this prototype - one document per demo scenario plus a cat-toxins reference, ingestible via `backend/scripts/seed_kb.py`.
 - **Chunking**: a few hundred words per chunk, by topic/section.
 - **Embedding + store**: a lightweight setup is enough at this scale — `sentence-transformers` embeddings into Chroma or pgvector. No need for anything heavier.
 - **Retrieval**: top-3–5 chunks, fed to the Knowledge Agent as context, answer generated with citations back to the source doc.
-- **Hard boundary**: the Knowledge Agent should never issue an urgency classification. If a "general" question turns out to describe an actual symptom ("is it normal for a dog to vomit after eating grass" — okay, informational — vs. "my dog has been vomiting for 2 days" — that's triage), the Orchestrator should route it to the Intake Agent/Triage Engine instead, not let the Knowledge Agent free-wheel a medical read on an active symptom.
+- **Hard boundary**: the Knowledge Agent should never issue an urgency classification. If a "general" question turns out to describe an actual symptom ("is it normal for a cat to vomit up a hairball occasionally" — okay, informational — vs. "my cat has been vomiting for 2 days" — that's triage), the Orchestrator should route it to the Intake Agent/Triage Engine instead, not let the Knowledge Agent free-wheel a medical read on an active symptom.
 
 So: **two knowledge stores, two different retrieval strategies, doing two different jobs** — a deterministic keyed lookup for anything urgency-related, and RAG only for general background Q&A that's explicitly outside the safety-critical path. Build the deterministic one first (you already have it); add the Knowledge Agent + RAG later, once the core triage loop is solid, since it's genuinely optional for an MVP.
 
@@ -253,3 +286,84 @@ No database server required — it's two flat files on disk. Retrieval (`retriev
 4. Wire in Sarvam STT/TTS once the text loop is solid.
 5. Note Agent.
 6. Knowledge Agent + RAG (§8) — implemented and ready to use once you add your LLM API key; upload/chunk/embed/retrieve already work standalone.
+
+---
+
+## 10. Cat-specific health scenarios (demo set)
+
+This is the independent research-and-design pass behind the cats-only pivot: not
+just relabeling a species-agnostic KB, but identifying where feline presentation of
+a symptom actually changes what "urgent" means. Full entries with red/yellow flags
+and phrasing live in `backend/triage_kb.py`; the six required demo scenarios are
+summarized here alongside the supporting entries added to make the KB coherent.
+
+| Scenario | Typical triage level | Why it's different in cats |
+|---|---|---|
+| **Urinary obstruction** (`urinary_obstruction`) | Emergency | Far more common in male cats (narrow urethra); a blocked cat can go into fatal kidney failure within 24-48h. This is the single highest-stakes entry in the KB. |
+| **Loss of appetite** (`not_eating`) | Soon → emergency past 24-48h | Cats (especially overweight ones) can develop hepatic lipidosis (fatty liver) from as little as 1-2 days without food - a risk that doesn't apply the same way to most other pets. |
+| **Vomiting** (`vomiting`) | Varies | The key judgment call is distinguishing a normal occasional hairball from a chronic pattern that, in cats, often signals IBD, hyperthyroidism, or kidney disease rather than being dismissed as "just a hairball cat." |
+| **Diarrhoea** (`diarrhea`) | Soon | Same general picture as other species, but kittens dehydrate faster than adult cats, so age materially changes the urgency. |
+| **Breathing difficulty** (`difficulty_breathing`) | Emergency (almost always) | Cats don't pant as a normal behavior the way dogs do - open-mouth breathing at rest is essentially always abnormal, and cats mask respiratory distress until it's severe. |
+| **Skin issues** (`skin_irritation`) | Home → soon | Usually flea allergy or stress-related overgrooming; escalates only with signs of acute allergic reaction (facial swelling, hives + breathing changes). |
+
+Two supporting entries were added specifically because of a common cat-owner
+confusion point and a cat-specific toxin risk, not carried over from a generic KB:
+
+- **Constipation** (`constipation`) - owners frequently can't visually distinguish
+  straining-to-urinate from straining-to-defecate. The KB treats these as distinct
+  entries with an explicit note in `constipation`'s guidance to default to the
+  urinary emergency path whenever there's doubt.
+- **Poisoning / toxin ingestion** (`poisoning_ingestion`) - expanded with feline-
+  specific toxins: lilies (severely nephrotoxic even from pollen or vase water,
+  and not well known as a hazard by most owners), permethrin (safe for dogs, toxic
+  to cats - a real and recurring accidental-poisoning source), and onion/garlic.
+
+The remaining entries (`lethargy`, `limping`, `seizure`, `bloated_abdomen`,
+`eye_injury`, `ear_infection`, `coughing`, `pain_vocalizing`, `trauma_injury`) were
+carried forward and localized for feline presentation - e.g. `bloated_abdomen`'s
+guidance no longer references GDV/bloat, which is a large-breed-dog condition rare
+in cats; a distended feline abdomen more often points to fluid buildup (FIP, heart,
+or liver disease), organomegaly, or parasite load.
+
+Each entry's `questions_to_ask` (vet-reviewed, per symptom) is read by the
+Conversation Agent as phrasing hints for its one allowed clarifying question per
+turn (`agents/conversation.py`'s `_suggested_questions`), and `owner_guidance` feeds
+both the live reply (§3) and the Plan section of the SOAP note (§11).
+
+The same triage content, written in longer explanatory form for retrieval quality,
+is seeded into the RAG knowledge store as `backend/knowledge_docs/*.md` - one file
+per demo scenario, plus a dedicated cat-toxins reference. Alongside those, the
+corpus also includes original general-care documents (kitten care basics,
+vaccination schedule, weight/nutrition, dental health, senior cat health, litter
+box behavior) covering the non-urgent informational questions the Knowledge Agent
+is actually meant to field, per §5. All 13 documents are original writing grounded
+in general veterinary knowledge, not reproduced from any single publisher's
+copyrighted text - see `backend/scripts/seed_kb.py` to ingest them. This is a
+separate corpus from `triage_kb.py` per §5's hard boundary: the RAG copy is for the
+Knowledge Agent's general Q&A, never for the urgency decision itself.
+
+---
+
+## 11. Consultation note format — SOAP
+
+The Note Agent (`agents/note.py`) writes the end-of-session consultation note in
+**SOAP** format - Subjective / Objective / Assessment / Plan - the standard
+veterinary (and broader clinical) note structure, so it reads naturally to both the
+cat owner and any vet it's shared with:
+
+- **Subjective** — what the owner reported in their own words: symptom(s),
+  duration, severity cues, relevant history (age, indoor/outdoor, prior episodes).
+- **Objective** — observable details from the conversation only (frequency counts,
+  described appearance of vomit/stool/urine, breathing pattern). No physical exam
+  was performed, so this section says so explicitly rather than inventing exam
+  findings or vitals.
+- **Assessment** — the triage impression: matched concern(s) + urgency level,
+  phrased as a possibility or reason to seek care, never a definitive diagnosis.
+- **Plan** — the recommended action matching the urgency level, home-care guidance
+  for the interim (drawn from the matched KB entries' `owner_guidance`, §10), and
+  the specific red-flag signs that mean "stop waiting, seek care now."
+
+Like every other LLM agent output in this system, the Note Agent is a summarizer,
+not a decision-maker - it organizes what the deterministic Triage Engine and the
+rest of the session state already established, and a fixed, non-LLM fallback note
+(same SOAP shape) covers the case where the Groq call itself fails.

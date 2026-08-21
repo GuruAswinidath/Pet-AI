@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 Urgency = Literal["emergency", "soon", "home"]
 Route = Literal["triage", "knowledge"]
-KBMode = Literal["llm", "rag"]
+KBMode = Literal["kb", "llm", "rag"]
 
 
 class ConsultTurnRequest(BaseModel):

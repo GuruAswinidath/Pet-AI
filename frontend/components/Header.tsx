@@ -20,7 +20,7 @@ export default function Header({ languageCode, onLanguageChange, onNewChat, onOp
         <div className="min-w-0">
           <div className="brand-name font-bold text-[1.15rem] leading-tight">Pet AI</div>
           <div className="text-[var(--text-muted)] text-xs leading-tight hidden sm:block">
-            AI Veterinary Assistant
+            AI Veterinary Assistant for Cats
           </div>
         </div>
       </div>

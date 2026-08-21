@@ -11,16 +11,16 @@ from groq_client import chat_json
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """You are the routing layer for a pet-health triage assistant. \
+_SYSTEM_PROMPT = """You are the routing layer for a cat-health triage assistant. \
 You do not give medical advice and you never decide urgency. For each user \
 message, decide whether it belongs to:
 
 - "triage": the user is describing (or continuing to describe) a symptom, \
-problem, or concern about a specific pet that needs an urgency assessment. \
+problem, or concern about a specific cat that needs an urgency assessment. \
 This includes answers to a clarifying question the assistant just asked.
 - "knowledge": the user is asking a general, non-urgent informational \
 question (breed facts, nutrition, general care, "what is X condition") \
-that does NOT describe an active symptom happening to their pet right now.
+that does NOT describe an active symptom happening to their cat right now.
 
 If a message could be read either way, prefer "triage" - it is safer to \
 run the deterministic triage check than to skip it.

@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 _KNOWN_SYMPTOMS = "\n".join(f"- {key}: {entry['label']}" for key, entry in TRIAGE_KB.items())
 
-_SYSTEM_PROMPT = f"""You are the Intake Agent for a pet-health triage assistant. \
-Extract structured fields from the user's free-text message about their pet. \
-You do not diagnose anything and you do not decide urgency - you only extract \
-what was said.
+_SYSTEM_PROMPT = f"""You are the Intake Agent for a cat-health triage assistant. \
+This assistant only triages cats. Extract structured fields from the user's \
+free-text message about their cat. You do not diagnose anything and you do not \
+decide urgency - you only extract what was said.
 
 Known symptom categories (use the key on the left whenever the message clearly \
 matches one of these; otherwise put the user's own words in "symptom" and leave \
@@ -28,7 +28,7 @@ it unmatched):
 
 Return strict JSON with this exact shape:
 {{
-  "species": "dog" | "cat" | "other" | null,
+  "species": "cat" | "other" | null,
   "breed": "<string or null>",
   "age": "<string or null>",
   "symptoms": [
@@ -40,6 +40,11 @@ Return strict JSON with this exact shape:
   ],
   "additional_notes": "<anything else relevant, or null>"
 }}
+
+For "species": set it to "other" ONLY if the message clearly describes a \
+different kind of animal (e.g. a dog, bird, or rabbit) rather than a cat - and \
+put the animal name in "additional_notes" when you do. Otherwise leave it null; \
+the session already assumes "cat" by default, so you don't need to confirm it.
 
 Only extract what the user actually said. Do not invent details. If this message \
 answers a previous clarifying question, merge that answer into the appropriate \
@@ -82,8 +87,12 @@ def _last_assistant_text(session: dict[str, Any]) -> str | None:
 
 
 def merge_into_session(session: dict[str, Any], extracted: dict[str, Any]) -> None:
-    if extracted.get("species") and not session.get("species"):
-        session["species"] = extracted["species"]
+    if extracted.get("species") == "other":
+        # Explicit out-of-scope flag - turn_processor short-circuits the
+        # rest of the triage flow when it sees this. Every session already
+        # defaults to "cat" (session_store.create_session), so this is the
+        # only species value worth writing back.
+        session["species"] = "other"
     if extracted.get("breed") and not session.get("breed"):
         session["breed"] = extracted["breed"]
     if extracted.get("age") and not session.get("age"):

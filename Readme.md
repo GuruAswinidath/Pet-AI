@@ -1,35 +1,44 @@
-# Pet AI - Vet Triage Assistant
+# Pet AI - Cat Vet Triage Assistant
 
-An AI-assisted pet symptom triage chatbot: a pet owner describes what's going on, a
-small pipeline of LLM agents plus one **deterministic** rules engine decides how
-urgent it is (`emergency` / `soon` / `home`), and a follow-up note + transcript are
-saved at the end of the conversation. Text and voice (Sarvam STT/TTS), multilingual
-(English + 10 Indic languages), plus a separate RAG-backed knowledge base for
-general (non-urgent) pet-care questions.
+An AI-assisted symptom triage chatbot for **cats**: a cat owner describes what's
+going on, a small pipeline of LLM agents plus one **deterministic** rules engine
+decides how urgent it is (`emergency` / `soon` / `home`), and a SOAP-format
+consultation note + transcript are saved at the end of the conversation. Text and
+voice (Sarvam STT/TTS), multilingual (English + 10 Indic languages), plus a
+separate RAG-backed knowledge base for general (non-urgent) cat-care questions.
 
-Full architecture spec: [`Readme.md`](Readme.md). Short version below.
+This prototype supports cats only - every prompt, the triage knowledge base, and
+the RAG corpus are written and reviewed for feline presentation specifically (see
+`flow.md` §10 for the research behind that). A message that clearly describes a
+different animal gets a polite out-of-scope reply instead of being triaged.
+
+Full architecture spec: [`flow.md`](flow.md). Short version below.
 
 ## How it works
 
 1. **Orchestrator** (light LLM call) - routes each message to the triage flow or
    the general-knowledge flow.
 2. **Intake Agent** (LLM) - extracts structured fields (species, symptom, duration,
-   severity cues) from free text.
+   severity cues) from free text; flags species as out-of-scope if the message
+   clearly describes a non-cat animal.
 3. **Triage Engine** (`backend/triage_engine.py`) - a **plain deterministic Python
    function**, not an LLM. It looks the symptom up in a vet-reviewed static
-   knowledge base (`backend/triage_kb.py`) and returns an urgency level. This is
-   the safety-critical decision, and it's intentionally never left to an LLM's
-   judgment - the agents only ever report what this function decided.
+   knowledge base (`backend/triage_kb.py`, cat-only) and returns an urgency level.
+   This is the safety-critical decision, and it's intentionally never left to an
+   LLM's judgment - the agents only ever report what this function decided.
 4. **Conversation Agent** (LLM) - either asks one clarifying question (max 3 per
-   session, then falls back to a cautious urgency) or phrases the final reply.
+   session, drawing on each symptom's vet-reviewed `questions_to_ask`, then falls
+   back to a cautious urgency) or phrases the final reply.
 5. **Safety Agent** (LLM) - reviews the draft reply for drug names/dosages/overreach
    before it goes out; failing replies get regenerated or replaced with a canned
    safe message.
-6. **Note Agent** (LLM) - writes a structured follow-up note at session end; the raw
-   transcript is also saved to `backend/results/`.
+6. **Note Agent** (LLM) - writes a **SOAP-format** consultation note (Subjective /
+   Objective / Assessment / Plan) at session end; the raw transcript is also saved
+   to `backend/results/`.
 7. **Knowledge Agent** + RAG (`backend/rag_store.py`) - answers general questions
-   ("is it normal for puppies to lose baby teeth?") grounded in documents you
-   upload, completely separate from the triage knowledge base.
+   ("is it normal for kittens to lose baby teeth?") grounded in documents you
+   upload - seed it with the cat health docs in `backend/knowledge_docs/` via
+   `python scripts/seed_kb.py` - completely separate from the triage knowledge base.
 
 All LLM agents run on Groq; Sarvam handles speech-to-text/text-to-speech.
 
@@ -37,8 +46,8 @@ All LLM agents run on Groq; Sarvam handles speech-to-text/text-to-speech.
 
 ```
 Pet AI/
-  Readme.md          - full architecture spec (source of truth for design decisions)
-  SETUP.md            - this file
+  flow.md             - full architecture spec (source of truth for design decisions)
+  Readme.md           - this file (setup + quick reference)
   backend/            - FastAPI service (Python)
   frontend/           - Next.js app (TypeScript, Tailwind, App Router)
 ```
@@ -92,6 +101,13 @@ The API is now at `http://127.0.0.1:8000` (interactive docs at `/docs`). Without
 `GROQ_API_KEY`/`SARVAM_API_KEY` set, the deterministic parts (triage engine, RAG
 upload/retrieval, session flow) still work - LLM/voice calls just return a clear
 503 instead of crashing.
+
+Optionally, seed the RAG knowledge base with the cat health documents in
+`backend/knowledge_docs/` (no API key needed - embedding runs locally):
+
+```bash
+python scripts/seed_kb.py
+```
 
 ### 2. Frontend (Next.js)
 

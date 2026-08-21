@@ -4,6 +4,11 @@ Orchestrator -> (Knowledge Agent) or (Intake Agent -> Triage Engine ->
 Conversation Agent -> Safety Agent) -> optional TTS -> Note Agent +
 save_conversation once the session reaches a final, non-clarifying reply.
 
+This assistant is cat-only: if the Intake Agent flags species as "other"
+(a different animal was clearly described), the triage route short-circuits
+with a polite out-of-scope reply instead of running it through the Triage
+Engine, which is only vet-reviewed for cats (triage_kb.py).
+
 Shared by the /consult and /consult/audio endpoints in main.py.
 """
 
@@ -21,10 +26,15 @@ from transcript import save_conversation
 from triage_engine import apply_clarify_cap_fallback, classify_urgency
 
 _CANNED_SAFE_MESSAGE = {
-    "emergency": "Please take your pet to a vet or emergency clinic as soon as possible.",
+    "emergency": "Please take your cat to a vet or emergency clinic as soon as possible.",
     "soon": "Please schedule a vet visit within the next day or two to have this looked at.",
-    "home": "It's likely okay to keep an eye on your pet at home for now, but please see a vet if things don't improve.",
+    "home": "It's likely okay to keep an eye on your cat at home for now, but please see a vet if things don't improve.",
 }
+
+_OUT_OF_SCOPE_MESSAGE = (
+    "I'm built specifically to help with cats right now, so I can't safely triage a different "
+    "animal here. Please contact your vet directly, or start a new chat to ask about a cat."
+)
 
 
 def process_turn(
@@ -53,6 +63,21 @@ def process_turn(
     # --- triage route ---
     extracted = extract_fields(session, user_text)
     merge_into_session(session, extracted)
+
+    if session.get("species") == "other":
+        session["status"] = "complete"
+        session["urgency"] = None
+        session["matched_kb_entries"] = []
+        session["missing_info"] = []
+        append_turn(session, "assistant", _OUT_OF_SCOPE_MESSAGE)
+        transcript_path = save_conversation(session)
+        session["transcript_path"] = transcript_path
+        save_session(session)
+        response = _build_response(
+            session, route, _OUT_OF_SCOPE_MESSAGE, is_final=True, transcript_path=transcript_path
+        )
+        _maybe_attach_audio(response, _OUT_OF_SCOPE_MESSAGE, session["language_code"], want_audio)
+        return response
 
     triage_result = classify_urgency(session["extracted_symptoms"], session.get("species"))
     session["urgency"] = triage_result["urgency"]

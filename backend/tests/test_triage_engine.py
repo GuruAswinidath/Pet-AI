@@ -26,14 +26,14 @@ class NormalizeSymptomTests(unittest.TestCase):
 
 class ClassifyUrgencyTests(unittest.TestCase):
     def test_empty_symptoms_returns_cautious_soon(self):
-        result = classify_urgency([], species="dog")
+        result = classify_urgency([], species="cat")
         self.assertEqual(result["urgency"], "soon")
         self.assertIn("symptom", result["missing_info"])
 
     def test_red_flag_triggers_emergency(self):
         result = classify_urgency(
             [{"symptom": "vomiting", "duration": "today", "severity_cues": ["blood in vomit"]}],
-            species="dog",
+            species="cat",
         )
         self.assertEqual(result["urgency"], "emergency")
         self.assertIn("vomiting", result["matched_kb_entries"])
@@ -49,7 +49,7 @@ class ClassifyUrgencyTests(unittest.TestCase):
                 {"symptom": "vomiting", "duration": "since this morning", "severity_cues": ["blood"]},
                 {"symptom": "lethargy", "duration": None, "severity_cues": ["very lethargic"]},
             ],
-            species="dog",
+            species="cat",
         )
         self.assertEqual(result["urgency"], "emergency")
 
@@ -63,18 +63,18 @@ class ClassifyUrgencyTests(unittest.TestCase):
     def test_mild_case_with_info_present_is_home(self):
         result = classify_urgency(
             [{"symptom": "vomiting", "duration": "once this morning", "severity_cues": ["ate grass"]}],
-            species="dog",
+            species="cat",
         )
         self.assertEqual(result["urgency"], "home")
         self.assertEqual(result["missing_info"], [])
 
     def test_missing_duration_and_severity_flags_missing_info(self):
-        result = classify_urgency([{"symptom": "vomiting"}], species="dog")
+        result = classify_urgency([{"symptom": "vomiting"}], species="cat")
         self.assertIn("duration_or_severity:vomiting", result["missing_info"])
         self.assertEqual(result["urgency"], "soon")
 
     def test_unrecognized_symptom_is_cautious_soon_and_flagged(self):
-        result = classify_urgency([{"symptom": "glowing fur"}], species="dog")
+        result = classify_urgency([{"symptom": "glowing fur"}], species="cat")
         self.assertEqual(result["urgency"], "soon")
         self.assertTrue(any(m.startswith("unrecognized_symptom:") for m in result["missing_info"]))
 
@@ -84,16 +84,57 @@ class ClassifyUrgencyTests(unittest.TestCase):
                 {"symptom": "vomiting", "duration": "once", "severity_cues": ["ate grass"]},
                 {"symptom": "seizure", "duration": "just now", "severity_cues": ["convulsions"]},
             ],
-            species="dog",
+            species="cat",
         )
         self.assertEqual(result["urgency"], "emergency")
 
     def test_alias_resolves_before_classification(self):
         result = classify_urgency(
             [{"symptom": "throwing up", "duration": "since morning", "severity_cues": []}],
-            species="dog",
+            species="cat",
         )
         self.assertIn("vomiting", result["matched_kb_entries"])
+
+    def test_urinary_obstruction_no_output_is_emergency(self):
+        # Demo scenario: urinary obstruction is the flagship cat emergency -
+        # a male cat straining with no urine output must never resolve to
+        # anything less than "emergency".
+        result = classify_urgency(
+            [
+                {
+                    "symptom": "can't pee",
+                    "duration": "since this morning",
+                    "severity_cues": ["straining with little or no urine", "crying while trying to urinate"],
+                }
+            ],
+            species="cat",
+        )
+        self.assertEqual(result["urgency"], "emergency")
+        self.assertIn("urinary_obstruction", result["matched_kb_entries"])
+
+    def test_urinary_obstruction_alias_resolves(self):
+        self.assertEqual(normalize_symptom("straining to pee"), "urinary_obstruction")
+
+    def test_constipation_distinct_from_urinary_obstruction(self):
+        # A common real-world mix-up: owners can't always tell straining to
+        # urinate from straining to defecate. Both should be recognized as
+        # distinct KB entries rather than one swallowing the other.
+        self.assertEqual(normalize_symptom("can't poop"), "constipation")
+        self.assertNotEqual(normalize_symptom("can't poop"), normalize_symptom("can't pee"))
+
+    def test_lily_ingestion_is_emergency_even_without_other_symptoms(self):
+        result = classify_urgency(
+            [{"symptom": "poisoning_ingestion", "duration": "an hour ago", "severity_cues": ["ate a lily"]}],
+            species="cat",
+        )
+        self.assertEqual(result["urgency"], "emergency")
+
+    def test_open_mouth_breathing_in_cat_is_emergency(self):
+        result = classify_urgency(
+            [{"symptom": "difficulty_breathing", "duration": "just noticed", "severity_cues": ["open mouth breathing in a cat"]}],
+            species="cat",
+        )
+        self.assertEqual(result["urgency"], "emergency")
 
 
 class ClarifyCapFallbackTests(unittest.TestCase):

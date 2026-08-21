@@ -1,6 +1,6 @@
 export type Urgency = "emergency" | "soon" | "home";
 export type Route = "triage" | "knowledge";
-export type KBMode = "llm" | "rag";
+export type KBMode = "kb" | "llm" | "rag";
 
 export interface ConsultTurnRequest {
   session_id: string | null;
@@ -9,12 +9,14 @@ export interface ConsultTurnRequest {
   want_audio: boolean;
 }
 
+/** Consultation note in SOAP format (Subjective / Objective / Assessment / Plan). */
 export interface FollowupNote {
-  summary?: string;
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
   urgency?: Urgency;
   key_symptoms?: string[];
-  recommended_action?: string;
-  notes_for_vet?: string;
 }
 
 export interface KBAskSource {
