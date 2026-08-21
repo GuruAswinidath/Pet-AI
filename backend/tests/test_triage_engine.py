@@ -170,6 +170,26 @@ class ClassifyUrgencyTests(unittest.TestCase):
         )
         self.assertEqual(result["urgency"], "emergency")
 
+    def test_fever_resolves_to_a_known_kb_entry(self):
+        # Regression: "fever" had no KB entry at all (not even in the
+        # original dog-era KB), so a real Intake Agent extraction of
+        # symptom="fever" always fell into the unrecognized_symptom branch.
+        # That branch has no questions_to_ask to ground the Conversation
+        # Agent, so every follow-up turn - even the user repeatedly
+        # confirming "yes" - produced a fresh, near-duplicate clarifying
+        # question about the same thing instead of ever resolving,
+        # observed live burning all 3 of the clarify-count budget on
+        # variations of "is your cat warm to the touch?".
+        self.assertEqual(normalize_symptom("fever"), "fever")
+        self.assertEqual(normalize_symptom("body was hot"), "fever")
+
+    def test_high_fever_with_lethargy_is_emergency(self):
+        result = classify_urgency(
+            [{"symptom": "fever", "duration": "since this morning", "severity_cues": ["fever with lethargy"]}],
+            species="cat",
+        )
+        self.assertEqual(result["urgency"], "emergency")
+
 
 class ClarifyCapFallbackTests(unittest.TestCase):
     def test_home_bumps_to_soon(self):

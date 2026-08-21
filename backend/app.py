@@ -10,9 +10,9 @@ Run directly with `python app.py` - no separate uvicorn command needed.
 
 import logging
 
-import httpx
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from sarvamai.core.api_error import ApiError
 
 import config
 from agents import knowledge as knowledge_agent
@@ -27,7 +27,7 @@ from models import (
     TTSRequest,
     TTSResponse,
 )
-from sarvam_client import synthesize_speech, transcribe_audio
+from sarvam_client import describe_api_error, synthesize_speech, transcribe_audio
 from session_store import get_session
 from transcript import save_conversation
 from turn_processor import process_turn
@@ -80,8 +80,10 @@ async def consult_audio(
         result = process_turn(session_id, transcript, effective_language, want_audio)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"Speech-to-text service error: {exc}") from exc
+    except ApiError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or 502, detail=f"Speech-to-text service error: {describe_api_error(exc)}"
+        ) from exc
     return ConsultTurnResponse(**result)
 
 
@@ -110,8 +112,10 @@ def tts(payload: TTSRequest) -> TTSResponse:
         result = synthesize_speech(payload.text, payload.language_code)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"Text-to-speech service error: {exc}") from exc
+    except ApiError as exc:
+        raise HTTPException(
+            status_code=exc.status_code or 502, detail=f"Text-to-speech service error: {describe_api_error(exc)}"
+        ) from exc
     return TTSResponse(audio_base64=result["audio_base64"], audio_mime_type=result["audio_mime_type"])
 
 

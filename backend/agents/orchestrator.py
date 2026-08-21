@@ -27,6 +27,12 @@ run the deterministic triage check than to skip it.
 
 Respond with strict JSON: {"route": "triage" | "knowledge", "reasoning": "<one short phrase>"}"""
 
+# A short reply (yes/no/a number/"a bit more"/etc.) is essentially never
+# how a genuine new general-knowledge question is phrased - those come as
+# full sentences. Below this word count, treat it as a continuation of
+# existing symptom context rather than asking the LLM to guess.
+_SHORT_REPLY_WORD_LIMIT = 4
+
 
 def route_turn(session: dict[str, Any], user_message: str) -> dict[str, str]:
     # Fast path: if we're mid clarifying-question loop, stay in triage
@@ -34,6 +40,25 @@ def route_turn(session: dict[str, Any], user_message: str) -> dict[str, str]:
     # the last assistant turn as a triage question.
     if session.get("status") == "awaiting_clarification":
         return {"route": "triage", "reasoning": "session awaiting clarification"}
+
+    # Fast path #2: a session's status flips to "complete" after every
+    # final reply, even an underspecified one the user might still add
+    # detail to - so the *next* message can be a bare "yes" confirming
+    # something safety-relevant (e.g. a fever) with no awaiting_clarification
+    # flag protecting it. The Orchestrator LLM sees only bare text with no
+    # view of the assistant's last question, and demonstrably misroutes
+    # short continuations like "yes" to "knowledge" - which then replies
+    # "I don't have that in the knowledge base" instead of ever triaging the
+    # detail. A message this short with any prior symptom context is almost
+    # certainly a continuation, not a new topic, so skip the LLM guess -
+    # unless it's phrased as an actual question ("?"), which the LLM should
+    # still get a chance to route properly.
+    if (
+        session.get("extracted_symptoms")
+        and "?" not in user_message
+        and len(user_message.split()) <= _SHORT_REPLY_WORD_LIMIT
+    ):
+        return {"route": "triage", "reasoning": "short reply with existing symptom context"}
 
     user_prompt = (
         f"Species on file: {session.get('species') or 'unknown'}\n"

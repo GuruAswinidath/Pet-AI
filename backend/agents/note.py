@@ -9,7 +9,7 @@ naturally to both the cat owner and any vet it's shared with.
 
 import json
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import config
 from groq_client import chat_json
@@ -72,8 +72,21 @@ def generate_followup_note(session: dict[str, Any]) -> dict[str, Any]:
         logger.exception("generate_followup_note: Groq call failed, using fallback note")
         note = _fallback_note(session)
 
+    # chat_json only raises on unparseable JSON - a syntactically valid but
+    # incomplete response (missing or blank subjective/objective/etc.) slips
+    # through as-is otherwise, silently shipping a half-empty SOAP note.
+    # Backfill any missing section from the deterministic fallback rather
+    # than trusting the LLM to have populated all four every time.
+    fallback: Optional[dict[str, Any]] = None
+    for field in ("subjective", "objective", "assessment", "plan"):
+        if not (note.get(field) or "").strip():
+            if fallback is None:
+                fallback = _fallback_note(session)
+            note[field] = fallback[field]
+
     note.setdefault("urgency", session.get("urgency"))
-    note.setdefault("key_symptoms", session.get("matched_kb_entries", []))
+    if not note.get("key_symptoms"):
+        note["key_symptoms"] = session.get("matched_kb_entries", [])
     return note
 
 

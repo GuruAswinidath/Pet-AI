@@ -16,17 +16,18 @@ SAFETY_MODEL = os.getenv("SAFETY_MODEL", "openai/gpt-oss-safeguard-20b")
 NOTE_MODEL = os.getenv("NOTE_MODEL", "openai/gpt-oss-20b")
 KNOWLEDGE_MODEL = os.getenv("KNOWLEDGE_MODEL", "openai/gpt-oss-120b")
 
-SARVAM_STT_URL = os.getenv("SARVAM_STT_URL", "https://api.sarvam.ai/speech-to-text")
-SARVAM_TTS_URL = os.getenv("SARVAM_TTS_URL", "https://api.sarvam.ai/text-to-speech")
-# "meera" was a valid Bulbul v1 speaker at one point but Sarvam has since
-# retired it - a live TTS call with it now 400s with "Speaker 'meera' is
-# not recognized" (found via real end-to-end testing, not from docs).
-# "anushka" is confirmed valid as of this writing; if this ever goes stale
-# again, POST to SARVAM_TTS_URL and the 400 body lists the current roster.
-SARVAM_TTS_SPEAKER = os.getenv("SARVAM_TTS_SPEAKER", "anushka")
-# "bulbul:v1" is likewise no longer accepted - a live call 400s with
-# "model: Input should be 'bulbul:v2', 'bulbul:v3-beta' or 'bulbul:v3'".
-SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v2")
+# sarvam_client.py uses the official `sarvamai` SDK, which manages its own
+# base URL - no endpoint URL config needed here.
+#
+# Model/speaker compatibility is stricter than it looks: each TTS model
+# version has its own speaker roster (a live call 400s with "Speaker 'X' is
+# not compatible with model Y" listing the valid ones), and STT/TTS model
+# IDs get retired over time (found via real end-to-end testing - "meera"
+# and "bulbul:v1", both defaults at one point, are dead now). "shubh" is
+# confirmed valid for bulbul:v3 as of this writing.
+SARVAM_STT_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
+SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
+SARVAM_TTS_SPEAKER = os.getenv("SARVAM_TTS_SPEAKER", "shubh")
 
 CORS_ORIGINS = [
     origin.strip()
