@@ -57,7 +57,7 @@ def ask_clarifying_question(session: dict[str, Any], missing_info: list[str]) ->
         ensure_ascii=False,
     )
     try:
-        return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.4, max_tokens=200)
+        return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.4, max_tokens=350)
     except Exception:
         logger.exception("ask_clarifying_question: Groq call failed, using canned fallback")
         return _fallback_clarifying_question(session.get("language_code"))
@@ -96,7 +96,7 @@ owner_guidance, and mention what would be a reason to seek a vet if it changes."
         ensure_ascii=False,
     )
     try:
-        return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.4, max_tokens=350)
+        return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.4, max_tokens=600)
     except Exception:
         logger.exception("draft_reply: Groq call failed, using canned fallback")
         return _fallback_reply(urgency, session.get("language_code"))
@@ -118,7 +118,7 @@ urgency level and guidance. Do not mention the safety review to the user."""
         ensure_ascii=False,
     )
     try:
-        return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.3, max_tokens=350)
+        return chat(config.CONVERSATION_MODEL, system_prompt, user_prompt, temperature=0.3, max_tokens=600)
     except Exception:
         logger.exception("regenerate_with_flag: Groq call failed, using canned fallback")
         return _fallback_reply(session.get("urgency") or "soon", session.get("language_code"))

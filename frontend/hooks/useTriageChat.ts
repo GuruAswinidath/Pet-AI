@@ -39,7 +39,7 @@ export function useTriageChat() {
       if (data.sources?.length) {
         const text =
           "Sources: " + data.sources.map((s) => `${s.filename} (score ${s.score.toFixed(2)})`).join(", ");
-        pushMessage({ role: "assistant", text, kind: "note" });
+        pushMessage({ role: "assistant", text, kind: "sources" });
       }
 
       setUrgency(data.urgency);
@@ -47,13 +47,12 @@ export function useTriageChat() {
       if (data.is_final && data.followup_note) {
         const note = data.followup_note;
         const lines = [
-          "Consultation note (SOAP)",
-          note.key_symptoms?.length ? `Key symptoms: ${note.key_symptoms.join(", ")}` : null,
-          note.subjective ? `S - Subjective: ${note.subjective}` : null,
-          note.objective ? `O - Objective: ${note.objective}` : null,
-          note.assessment ? `A - Assessment: ${note.assessment}` : null,
-          note.plan ? `P - Plan: ${note.plan}` : null,
-          data.transcript_path ? `Transcript saved to: ${data.transcript_path}` : null,
+          note.key_symptoms?.length ? `**Key symptoms:** ${note.key_symptoms.join(", ")}` : null,
+          note.subjective ? `**S — Subjective:** ${note.subjective}` : null,
+          note.objective ? `**O — Objective:** ${note.objective}` : null,
+          note.assessment ? `**A — Assessment:** ${note.assessment}` : null,
+          note.plan ? `**P — Plan:** ${note.plan}` : null,
+          data.transcript_path ? `_Transcript saved to: ${data.transcript_path}_` : null,
         ].filter((l): l is string => Boolean(l));
         pushMessage({ role: "assistant", text: lines.join("\n\n"), kind: "note" });
       }
@@ -85,7 +84,7 @@ export function useTriageChat() {
         applyResponse(data);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        pushMessage({ role: "assistant", text: `Error: ${message}`, kind: "note" });
+        pushMessage({ role: "assistant", text: `Error: ${message}`, kind: "error" });
         setStatus("");
       } finally {
         setIsTyping(false);
@@ -112,7 +111,7 @@ export function useTriageChat() {
         applyResponse(data);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        pushMessage({ role: "assistant", text: `Error: ${message}`, kind: "note" });
+        pushMessage({ role: "assistant", text: `Error: ${message}`, kind: "error" });
         setStatus("");
       } finally {
         setIsTyping(false);

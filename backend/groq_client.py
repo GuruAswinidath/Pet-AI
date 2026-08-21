@@ -47,6 +47,21 @@ def _unwrap_accidental_json(text: str) -> str:
     return text
 
 
+def _supports_reasoning_effort(model: str) -> bool:
+    """The "gpt-oss" model family (all of this app's current agents, per
+    config.py) does hidden reasoning before its visible/JSON answer, and
+    that reasoning draws from the same max_tokens budget - confirmed via
+    completion_tokens_details.reasoning_tokens on a live call. Left
+    uncapped, that consumption is unpredictable enough to have caused two
+    real, observed failures: the Safety/Note Agents' response_format
+    json_object calls returning invalid or truncated JSON, and the
+    Conversation Agent's plain-text reply itself getting cut off
+    mid-sentence. `reasoning_effort` is gpt-oss-specific - passing it to a
+    model that doesn't support it is a hard 400, so this must stay gated
+    rather than sent unconditionally regardless of the *_MODEL env vars."""
+    return "gpt-oss" in model
+
+
 def chat(
     model: str,
     system_prompt: str,
@@ -69,6 +84,12 @@ def chat(
     }
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
+    if _supports_reasoning_effort(model):
+        # Every agent in this app wants a fast, concise, or strictly
+        # schema-conforming answer, never an extended "thinking out loud"
+        # pass - "low" keeps reasoning token usage small and predictable
+        # instead of letting it silently crowd out the visible/JSON output.
+        kwargs["extra_body"] = {"reasoning_effort": "low"}
 
     completion = client.chat.completions.create(**kwargs)
     content = completion.choices[0].message.content or ""

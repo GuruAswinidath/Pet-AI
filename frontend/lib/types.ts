@@ -63,7 +63,7 @@ export interface KBAskResponse {
   sources: KBAskSource[];
 }
 
-export type MessageKind = "normal" | "note";
+export type MessageKind = "normal" | "note" | "sources" | "error";
 
 export interface ChatMessage {
   id: string;

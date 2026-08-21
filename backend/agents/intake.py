@@ -41,6 +41,16 @@ Return strict JSON with this exact shape:
   "additional_notes": "<anything else relevant, or null>"
 }}
 
+For "severity_cues": capture more than just obviously dramatic signs - several \
+red flags in this system's knowledge base are risk-factor combinations, not just \
+severity on their own (e.g. "not eating for over 24 hours in an overweight cat" \
+needs the overweight detail captured just as much as the duration; "male cat \
+straining to pee" needs sex captured). So also include, as short cues, anything \
+the owner mentions about: the cat's weight/body condition (e.g. "overweight", \
+"thin"), sex, whether they're a kitten, and explicitly-denied symptoms relevant to \
+the same complaint (e.g. "no vomiting" is worth keeping, not dropping, when it's \
+offered alongside a symptom report). Don't invent any of this if it wasn't stated.
+
 For "species": set it to "other" ONLY if the message clearly describes a \
 different kind of animal (e.g. a dog, bird, or rabbit) rather than a cat - and \
 put the animal name in "additional_notes" when you do. Otherwise leave it null; \

@@ -18,8 +18,15 @@ KNOWLEDGE_MODEL = os.getenv("KNOWLEDGE_MODEL", "openai/gpt-oss-120b")
 
 SARVAM_STT_URL = os.getenv("SARVAM_STT_URL", "https://api.sarvam.ai/speech-to-text")
 SARVAM_TTS_URL = os.getenv("SARVAM_TTS_URL", "https://api.sarvam.ai/text-to-speech")
-SARVAM_TTS_SPEAKER = os.getenv("SARVAM_TTS_SPEAKER", "meera")
-SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v1")
+# "meera" was a valid Bulbul v1 speaker at one point but Sarvam has since
+# retired it - a live TTS call with it now 400s with "Speaker 'meera' is
+# not recognized" (found via real end-to-end testing, not from docs).
+# "anushka" is confirmed valid as of this writing; if this ever goes stale
+# again, POST to SARVAM_TTS_URL and the 400 body lists the current roster.
+SARVAM_TTS_SPEAKER = os.getenv("SARVAM_TTS_SPEAKER", "anushka")
+# "bulbul:v1" is likewise no longer accepted - a live call 400s with
+# "model: Input should be 'bulbul:v2', 'bulbul:v3-beta' or 'bulbul:v3'".
+SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v2")
 
 CORS_ORIGINS = [
     origin.strip()

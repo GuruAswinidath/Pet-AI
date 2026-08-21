@@ -62,6 +62,39 @@ def _phrase_matches(flag_phrase: str, text_blob: str) -> bool:
     return bool(flag_words & _significant_words(text_blob))
 
 
+_NEGATION_PREFIXES = ("no ", "not ", "non ", "without ", "denies ", "denied ", "absent ")
+_NEGATION_WORDS = {"no", "none", "denied", "absent"}
+
+
+def _is_negated_cue(cue: str) -> bool:
+    """True for a severity_cue that denies a symptom rather than reporting
+    it (e.g. "no vomiting", "not hiding"). The Intake Agent is deliberately
+    asked to keep denials like these (agents/intake.py) since they're
+    useful context for the note/reply - but they must never be allowed to
+    contribute words toward matching a red/yellow flag, or a denial ends up
+    triggering the exact thing it denied (e.g. "no hiding" sharing the word
+    "hiding" with the red flag "not eating and hiding")."""
+    c = cue.strip().lower()
+    return c in _NEGATION_WORDS or c.startswith(_NEGATION_PREFIXES)
+
+
+def _is_bare_symptom_flag(flag_phrase: str, kb_key: str, label: str) -> bool:
+    """True if a red/yellow flag phrase is nothing more than a restatement
+    of the symptom's own name or label (e.g. "seizure" as a red flag on the
+    seizure entry, meaning the symptom occurring at all is the red flag).
+
+    Such flags must fire from the symptom having been reported at all - not
+    from severity_cues/duration text separately restating the same word,
+    which real extraction (LLM-produced cues like "convulsing" vs. the flag
+    "convulsions") won't reliably do. Deliberately an exact-phrase check,
+    not the fuzzy word-overlap _phrase_matches falls back to: a fuzzy check
+    here would let a symptom's own name self-match phrases like "vomiting
+    blood" or "repeated vomiting" through shared words, turning routine
+    reports into false emergencies."""
+    flag_lower = flag_phrase.lower().strip()
+    return flag_lower == kb_key.replace("_", " ") or flag_lower == label.lower()
+
+
 def normalize_symptom(raw: str | None) -> str | None:
     """Map free text (from the Intake Agent or a user) onto a canonical
     TRIAGE_KB key. Exact match -> alias table -> loose substring match."""
@@ -119,12 +152,21 @@ def classify_urgency(extracted_symptoms: list[dict], species: str | None = None)
         if kb_key not in matched_entries:
             matched_entries.append(kb_key)
 
-        text_blob = " ".join(severity_cues + ([duration] if duration else [])).lower()
+        # Denied symptoms (e.g. "no vomiting") stay in severity_cues for the
+        # missing-info check below and for downstream context (note/reply),
+        # but must not feed flag matching - see _is_negated_cue.
+        positive_cues = [c for c in severity_cues if not _is_negated_cue(c)]
+        text_blob = " ".join(positive_cues + ([duration] if duration else [])).lower()
         red_flags = [f.lower() for f in entry["red_flags"]]
         yellow_flags = [f.lower() for f in entry["yellow_flags"]]
 
-        hit_red = any(_phrase_matches(rf, text_blob) for rf in red_flags)
-        hit_yellow = any(_phrase_matches(yf, text_blob) for yf in yellow_flags)
+        label = entry["label"]
+        hit_red = any(
+            _phrase_matches(rf, text_blob) or _is_bare_symptom_flag(rf, kb_key, label) for rf in red_flags
+        )
+        hit_yellow = any(
+            _phrase_matches(yf, text_blob) or _is_bare_symptom_flag(yf, kb_key, label) for yf in yellow_flags
+        )
 
         if hit_red:
             worst_urgency = _more_cautious(worst_urgency, "emergency")

@@ -46,6 +46,7 @@ export default function Composer({
 
   return (
     <div className="composer px-6 pt-3.5 pb-4 shrink-0">
+      <div className="max-w-3xl mx-auto">
       <div className="mode-toggle inline-flex rounded-full p-[3px] mb-2.5 gap-[3px]">
         <button
           type="button"
@@ -103,6 +104,7 @@ export default function Composer({
       <div className="disclaimer flex items-center justify-center gap-1.5 mt-2 text-[0.74rem] text-center">
         <InfoIcon className="w-3.5 h-3.5 shrink-0" />
         Pet AI provides general information only. Consult a veterinarian for medical advice.
+      </div>
       </div>
     </div>
   );

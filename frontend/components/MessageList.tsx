@@ -30,15 +30,17 @@ export default function MessageList({ messages, isTyping }: { messages: ChatMess
   }, [messages, isTyping]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 pt-5 pb-2 flex flex-col gap-4">
-      <div className="flex justify-center mb-1">
-        <span className="date-separator text-xs font-semibold px-3.5 py-1.5 rounded-full">Today</span>
+    <div className="flex-1 overflow-y-auto px-6 pt-5 pb-2">
+      <div className="max-w-3xl mx-auto flex flex-col gap-4">
+        <div className="flex justify-center mb-1">
+          <span className="date-separator text-xs font-semibold px-3.5 py-1.5 rounded-full">Today</span>
+        </div>
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
+        {isTyping && <TypingIndicator />}
+        <div ref={bottomRef} />
       </div>
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
-      ))}
-      {isTyping && <TypingIndicator />}
-      <div ref={bottomRef} />
     </div>
   );
 }

@@ -95,15 +95,17 @@ export default function SettingsPanel({ open, onClose, languageCode }: SettingsP
   if (!open) return null;
 
   return (
-    <aside className="settings-panel w-[360px] shrink-0 flex flex-col overflow-y-auto fixed inset-0 z-20 md:static md:w-[360px]">
-      <div className="settings-header flex items-center justify-between px-5 py-4">
-        <h2 className="m-0 text-[1.05rem] font-semibold">Knowledge base</h2>
-        <button onClick={onClose} className="icon-btn w-[34px] h-[34px] rounded-lg flex items-center justify-center cursor-pointer" aria-label="Close settings">
-          ✕
-        </button>
-      </div>
+    <>
+      <div className="settings-backdrop fixed inset-0 z-20" onClick={onClose} aria-hidden="true" />
+      <aside className="settings-panel w-full sm:w-[380px] shrink-0 flex flex-col overflow-y-auto fixed inset-y-0 right-0 z-30">
+        <div className="settings-header flex items-center justify-between px-5 py-4 sticky top-0">
+          <h2 className="m-0 text-[1.05rem] font-semibold">Knowledge base</h2>
+          <button onClick={onClose} className="icon-btn w-[34px] h-[34px] rounded-lg flex items-center justify-center cursor-pointer" aria-label="Close settings">
+            ✕
+          </button>
+        </div>
 
-      <div className="px-5 py-4 flex flex-col gap-5">
+        <div className="px-5 py-4 flex flex-col gap-5">
         <section>
           <h3 className="m-0 mb-1.5 text-[0.9rem] font-semibold">Answer mode</h3>
           <p className="text-[0.78rem] text-[var(--text-muted)] leading-relaxed mb-2.5">
@@ -193,7 +195,8 @@ export default function SettingsPanel({ open, onClose, languageCode }: SettingsP
           </div>
           {askAnswer && <div className="mt-2.5 text-[0.85rem] leading-relaxed whitespace-pre-wrap">{askAnswer}</div>}
         </section>
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }

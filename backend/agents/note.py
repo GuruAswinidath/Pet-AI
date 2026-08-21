@@ -66,7 +66,7 @@ def generate_followup_note(session: dict[str, Any]) -> dict[str, Any]:
             _SYSTEM_PROMPT,
             json.dumps(context, ensure_ascii=False),
             temperature=0.2,
-            max_tokens=600,
+            max_tokens=1000,
         )
     except Exception:
         logger.exception("generate_followup_note: Groq call failed, using fallback note")

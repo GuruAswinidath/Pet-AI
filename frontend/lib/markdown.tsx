@@ -5,14 +5,16 @@ import React, { Fragment } from "react";
 // lets richer structured answers render nicely without a markdown library.
 
 function renderInline(text: string, keyPrefix: string): React.ReactNode {
-  const parts = text.split(/(\*\*.+?\*\*)/g).filter((p) => p.length > 0);
-  return parts.map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={`${keyPrefix}-${i}`}>{part.slice(2, -2)}</strong>
-    ) : (
-      <Fragment key={`${keyPrefix}-${i}`}>{part}</Fragment>
-    )
-  );
+  const parts = text.split(/(\*\*.+?\*\*|_.+?_)/g).filter((p) => p.length > 0);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={`${keyPrefix}-${i}`}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("_") && part.endsWith("_") && part.length > 2) {
+      return <em key={`${keyPrefix}-${i}`}>{part.slice(1, -1)}</em>;
+    }
+    return <Fragment key={`${keyPrefix}-${i}`}>{part}</Fragment>;
+  });
 }
 
 export function renderContent(text: string): React.ReactNode {

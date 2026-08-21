@@ -129,6 +129,40 @@ class ClassifyUrgencyTests(unittest.TestCase):
         )
         self.assertEqual(result["urgency"], "emergency")
 
+    def test_denied_symptom_cue_does_not_falsely_trigger_its_own_red_flag(self):
+        # Regression: found via real Intake Agent extraction. When an owner
+        # explicitly denies a symptom ("no vomiting", "no hiding"), the
+        # fuzzy word-overlap fallback used to still match those words
+        # against red flags like "not eating and hiding" or "not eating at
+        # all combined with vomiting" - turning an explicit denial into a
+        # false emergency trigger.
+        result = classify_urgency(
+            [
+                {
+                    "symptom": "not_eating",
+                    "duration": "about a day and a half",
+                    "severity_cues": ["overweight", "no vomiting", "no hiding"],
+                }
+            ],
+            species="cat",
+        )
+        self.assertEqual(result["urgency"], "soon")
+
+    def test_seizure_is_emergency_even_when_cues_dont_restate_the_word(self):
+        # Regression: "seizure" is itself a red flag on the seizure entry
+        # (yellow_flags is empty - any seizure warrants emergency care), but
+        # real Intake Agent extraction won't always restate "seizure" or
+        # "convulsions" verbatim in duration/severity_cues (e.g. it might
+        # say "convulsing" instead). Providing *some* duration/cue used to
+        # skip the missing_info->soon safety net without the red flag
+        # actually matching, silently falling through to "home" - the
+        # least cautious outcome for what should always be an emergency.
+        result = classify_urgency(
+            [{"symptom": "seizure", "duration": "a minute ago", "severity_cues": ["convulsing"]}],
+            species="cat",
+        )
+        self.assertEqual(result["urgency"], "emergency")
+
     def test_open_mouth_breathing_in_cat_is_emergency(self):
         result = classify_urgency(
             [{"symptom": "difficulty_breathing", "duration": "just noticed", "severity_cues": ["open mouth breathing in a cat"]}],
