@@ -9,8 +9,10 @@ interface ComposerProps {
   isRecording: boolean;
   isSending: boolean;
   status: string;
-  voiceMode: boolean;
-  onVoiceModeChange: (voiceMode: boolean) => void;
+  wantText: boolean;
+  wantAudio: boolean;
+  onWantTextChange: (wantText: boolean) => void;
+  onWantAudioChange: (wantAudio: boolean) => void;
 }
 
 export default function Composer({
@@ -19,11 +21,24 @@ export default function Composer({
   isRecording,
   isSending,
   status,
-  voiceMode,
-  onVoiceModeChange,
+  wantText,
+  wantAudio,
+  onWantTextChange,
+  onWantAudioChange,
 }: ComposerProps) {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Both output types can be on at once - only block turning the last
+  // remaining one off, so there's always at least one way to see the reply.
+  const toggleText = () => {
+    if (wantText && !wantAudio) return;
+    onWantTextChange(!wantText);
+  };
+  const toggleVoice = () => {
+    if (wantAudio && !wantText) return;
+    onWantAudioChange(!wantAudio);
+  };
 
   const handleSend = () => {
     if (!text.trim() || isSending) return;
@@ -50,16 +65,18 @@ export default function Composer({
       <div className="mode-toggle inline-flex rounded-full p-[3px] mb-2.5 gap-[3px]">
         <button
           type="button"
-          onClick={() => onVoiceModeChange(false)}
-          className={`mode-pill ${!voiceMode ? "active" : ""} inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.82rem] font-semibold cursor-pointer`}
+          onClick={toggleText}
+          aria-pressed={wantText}
+          className={`mode-pill ${wantText ? "active" : ""} inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.82rem] font-semibold cursor-pointer`}
         >
           <ChatIcon className="w-4 h-4" />
           Text
         </button>
         <button
           type="button"
-          onClick={() => onVoiceModeChange(true)}
-          className={`mode-pill ${voiceMode ? "active" : ""} inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.82rem] font-semibold cursor-pointer`}
+          onClick={toggleVoice}
+          aria-pressed={wantAudio}
+          className={`mode-pill ${wantAudio ? "active" : ""} inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.82rem] font-semibold cursor-pointer`}
         >
           <MicIcon className="w-4 h-4" />
           Voice
@@ -75,7 +92,7 @@ export default function Composer({
             autoResize(e.target);
           }}
           onKeyDown={handleKeyDown}
-          placeholder={voiceMode ? "Type, or click the mic to speak..." : "Type your message..."}
+          placeholder={wantAudio ? "Type, or click the mic to speak..." : "Type your message..."}
           rows={1}
           className="message-input flex-1 resize-none rounded-[22px] px-[18px] py-3 text-[0.94rem] max-h-[120px]"
         />

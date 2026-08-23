@@ -12,10 +12,10 @@ import logging
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from sarvamai.core.api_error import ApiError
 
 import config
 from agents import knowledge as knowledge_agent
+from bhashini_client import BhashiniError, describe_api_error, synthesize_speech, transcribe_audio
 from models import (
     ConsultTurnRequest,
     ConsultTurnResponse,
@@ -27,7 +27,6 @@ from models import (
     TTSRequest,
     TTSResponse,
 )
-from sarvam_client import describe_api_error, synthesize_speech, transcribe_audio
 from session_store import get_session
 from transcript import save_conversation
 from turn_processor import process_turn
@@ -50,7 +49,7 @@ def health() -> dict:
     return {
         "status": "ok",
         "groq_key_configured": bool(config.GROQ_API_KEY),
-        "sarvam_key_configured": bool(config.SARVAM_API_KEY),
+        "bhashini_key_configured": bool(config.BHASHINI_API_KEY),
     }
 
 
@@ -80,7 +79,7 @@ async def consult_audio(
         result = process_turn(session_id, transcript, effective_language, want_audio)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except ApiError as exc:
+    except BhashiniError as exc:
         raise HTTPException(
             status_code=exc.status_code or 502, detail=f"Speech-to-text service error: {describe_api_error(exc)}"
         ) from exc
@@ -112,7 +111,7 @@ def tts(payload: TTSRequest) -> TTSResponse:
         result = synthesize_speech(payload.text, payload.language_code)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except ApiError as exc:
+    except BhashiniError as exc:
         raise HTTPException(
             status_code=exc.status_code or 502, detail=f"Text-to-speech service error: {describe_api_error(exc)}"
         ) from exc

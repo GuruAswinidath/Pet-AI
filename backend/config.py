@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
+BHASHINI_API_KEY = os.getenv("BHASHINI_API_KEY", "")
 
 # Model routing per README section 2.1. Overridable via env vars so a
 # retired/renamed Groq model ID doesn't require a code change.
@@ -16,18 +16,12 @@ SAFETY_MODEL = os.getenv("SAFETY_MODEL", "openai/gpt-oss-safeguard-20b")
 NOTE_MODEL = os.getenv("NOTE_MODEL", "openai/gpt-oss-20b")
 KNOWLEDGE_MODEL = os.getenv("KNOWLEDGE_MODEL", "openai/gpt-oss-120b")
 
-# sarvam_client.py uses the official `sarvamai` SDK, which manages its own
-# base URL - no endpoint URL config needed here.
-#
-# Model/speaker compatibility is stricter than it looks: each TTS model
-# version has its own speaker roster (a live call 400s with "Speaker 'X' is
-# not compatible with model Y" listing the valid ones), and STT/TTS model
-# IDs get retired over time (found via real end-to-end testing - "meera"
-# and "bulbul:v1", both defaults at one point, are dead now). "shubh" is
-# confirmed valid for bulbul:v3 as of this writing.
-SARVAM_STT_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
-SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
-SARVAM_TTS_SPEAKER = os.getenv("SARVAM_TTS_SPEAKER", "shubh")
+# bhashini_client.py talks to Bhashini's pipeline-compute inference API
+# directly over HTTP (no official Python SDK) - endpoint is overridable in
+# case a deployment is pinned to a region/version-specific URL.
+BHASHINI_ENDPOINT = os.getenv(
+    "BHASHINI_ENDPOINT", "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
+)
 
 CORS_ORIGINS = [
     origin.strip()
@@ -71,10 +65,10 @@ def require_groq_key() -> str:
     return GROQ_API_KEY
 
 
-def require_sarvam_key() -> str:
-    if not SARVAM_API_KEY:
+def require_bhashini_key() -> str:
+    if not BHASHINI_API_KEY:
         raise RuntimeError(
-            "SARVAM_API_KEY is not set. Add it to backend/.env (copy from .env.example) "
+            "BHASHINI_API_KEY is not set. Add it to backend/.env (copy from .env.example) "
             "to enable speech-to-text / text-to-speech."
         )
-    return SARVAM_API_KEY
+    return BHASHINI_API_KEY

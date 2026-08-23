@@ -61,7 +61,7 @@ This is 5–7 nodes, which is plenty. Resist adding more agents than this for an
 
 ## 2.1 Which model for which agent, and where it's served
 
-Your available model catalog is on Groq, plus Sarvam for Indic speech. Map them like this:
+Your available model catalog is on Groq, plus Bhashini for Indic speech. Map them like this:
 
 | Agent | Model | Source | Why this one |
 |---|---|---|---|
@@ -73,10 +73,10 @@ Your available model catalog is on Groq, plus Sarvam for Indic speech. Map them 
 | **Note Agent** | GPT OSS 20B | Groq | Summarization from structured state, doesn't need the largest model |
 | **Knowledge Agent** *(optional)* | GPT OSS 120B or Llama 3.3 70B | Groq | Same multilingual generation task as the Conversation Agent, just grounded in RAG context instead of the KB |
 | **Vision** *(Phase 3, photo triage)* | Qwen 3.6 27B | Groq | Only model in your set tagged for vision |
-| **Speech-to-text** | Sarvam ASR | Sarvam | Chosen over Groq's Whisper specifically for stronger Indic-language and code-mixed speech handling |
-| **Text-to-speech** | Sarvam TTS | Sarvam | Groq's Orpheus only covers English/Arabic — no Indic voice output, so Sarvam fills this gap entirely |
+| **Speech-to-text** | Bhashini ASR | Bhashini | Purpose-built for Indic-language and code-mixed speech, with per-language-family model routing (Dravidian/Indo-Aryan/English) |
+| **Text-to-speech** | Bhashini TTS | Bhashini | Groq's Orpheus only covers English/Arabic — no Indic voice output, so Bhashini fills this gap entirely |
 
-Practical note: since Orchestrator, Intake, Conversation, Safety, and Note agents are all on Groq, you can run them through one client/SDK with just the model name changing per call — keeps your code simple. Sarvam is the one separate integration (its own API key, its own client) purely for STT/TTS.
+Practical note: since Orchestrator, Intake, Conversation, Safety, and Note agents are all on Groq, you can run them through one client/SDK with just the model name changing per call — keeps your code simple. Bhashini is the one separate integration (its own API key, its own HTTP client) purely for STT/TTS.
 
 ---
 
@@ -86,7 +86,7 @@ Practical note: since Orchestrator, Intake, Conversation, Safety, and Note agent
 User speaks
    │
    ▼
-[STT: Sarvam] → transcript + language_code
+[STT: Bhashini] → transcript + language_code
    │
    ▼
 Orchestrator: is this a new complaint or a follow-up in an existing session?
@@ -111,7 +111,7 @@ Triage Engine (tool call, deterministic):
                 ├── fail → Conversation Agent regenerates with the violation flagged,
                 │           or falls back to a safe canned message
                 │
-                └── pass → send to TTS (Sarvam) + display text
+                └── pass → send to TTS (Bhashini) + display text
                                 │
                                 ▼
                           Session marked complete →
@@ -283,7 +283,7 @@ No database server required — it's two flat files on disk. Retrieval (`retriev
 1. Triage Engine as a standalone, testable function reading the in-code KB (§4.1) — wrap it in `classify_urgency()`.
 2. Intake Agent + Conversation Agent + Safety Agent as the minimal loop, single language, text-only, no voice yet — all on Groq per §2.1.
 3. `save_conversation()` — trivial, do it early so every test run leaves a trail.
-4. Wire in Sarvam STT/TTS once the text loop is solid.
+4. Wire in Bhashini STT/TTS once the text loop is solid.
 5. Note Agent.
 6. Knowledge Agent + RAG (§8) — implemented and ready to use once you add your LLM API key; upload/chunk/embed/retrieve already work standalone.
 

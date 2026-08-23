@@ -13,16 +13,17 @@ export default function Home() {
   const { messages, isSending, isTyping, urgency, status, sendText, sendAudio, newSession, audioRef } =
     useTriageChat();
   const [languageCode, setLanguageCode] = useState("en-IN");
-  const [voiceMode, setVoiceMode] = useState(false);
+  const [wantText, setWantText] = useState(true);
+  const [wantAudio, setWantAudio] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [recorderStatus, setRecorderStatus] = useState("");
 
   const handleRecordingComplete = useCallback(
     (blob: Blob) => {
       setRecorderStatus("");
-      sendAudio(blob, languageCode, voiceMode);
+      sendAudio(blob, languageCode, wantText, wantAudio);
     },
-    [sendAudio, languageCode, voiceMode]
+    [sendAudio, languageCode, wantText, wantAudio]
   );
 
   const handleRecorderError = useCallback((message: string) => {
@@ -47,13 +48,15 @@ export default function Home() {
           <UrgencyBanner urgency={urgency} />
           <MessageList messages={messages} isTyping={isTyping} />
           <Composer
-            onSend={(text) => sendText(text, languageCode, voiceMode)}
+            onSend={(text) => sendText(text, languageCode, wantText, wantAudio)}
             onToggleRecording={toggleRecording}
             isRecording={isRecording}
             isSending={isSending}
             status={composerStatus}
-            voiceMode={voiceMode}
-            onVoiceModeChange={setVoiceMode}
+            wantText={wantText}
+            wantAudio={wantAudio}
+            onWantTextChange={setWantText}
+            onWantAudioChange={setWantAudio}
           />
         </section>
 

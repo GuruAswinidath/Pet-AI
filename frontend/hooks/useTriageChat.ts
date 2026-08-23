@@ -31,10 +31,14 @@ export function useTriageChat() {
   }, []);
 
   const applyResponse = useCallback(
-    (data: ConsultTurnResponse) => {
+    (data: ConsultTurnResponse, wantText: boolean) => {
       sessionIdRef.current = data.session_id;
       setSessionId(data.session_id);
-      pushMessage({ role: "assistant", text: data.reply, kind: "normal" });
+      // Always fall back to showing text if audio didn't actually come back -
+      // otherwise a voice-only reply with a failed TTS call leaves nothing.
+      if (wantText || !data.audio_base64) {
+        pushMessage({ role: "assistant", text: data.reply, kind: "normal" });
+      }
 
       if (data.sources?.length) {
         const text =
@@ -52,7 +56,7 @@ export function useTriageChat() {
           note.objective ? `**O — Objective:** ${note.objective}` : null,
           note.assessment ? `**A — Assessment:** ${note.assessment}` : null,
           note.plan ? `**P — Plan:** ${note.plan}` : null,
-          data.transcript_path ? `_Transcript saved to: ${data.transcript_path}_` : null,
+          // data.transcript_path ? `_Transcript saved to: ${data.transcript_path}_` : null,
         ].filter((l): l is string => Boolean(l));
         pushMessage({ role: "assistant", text: lines.join("\n\n"), kind: "note" });
       }
@@ -68,7 +72,7 @@ export function useTriageChat() {
   );
 
   const sendText = useCallback(
-    async (text: string, languageCode: string, wantAudio: boolean) => {
+    async (text: string, languageCode: string, wantText: boolean, wantAudio: boolean) => {
       if (!text.trim() || isSending) return;
       setIsSending(true);
       pushMessage({ role: "user", text, kind: "normal" });
@@ -81,7 +85,7 @@ export function useTriageChat() {
           language_code: languageCode,
           want_audio: wantAudio,
         });
-        applyResponse(data);
+        applyResponse(data, wantText);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         pushMessage({ role: "assistant", text: `Error: ${message}`, kind: "error" });
@@ -95,7 +99,7 @@ export function useTriageChat() {
   );
 
   const sendAudio = useCallback(
-    async (blob: Blob, languageCode: string, wantAudio: boolean) => {
+    async (blob: Blob, languageCode: string, wantText: boolean, wantAudio: boolean) => {
       if (isSending) return;
       setIsSending(true);
       pushMessage({ role: "user", text: "(voice message)", kind: "normal" });
@@ -108,7 +112,7 @@ export function useTriageChat() {
           languageCode,
           wantAudio,
         });
-        applyResponse(data);
+        applyResponse(data, wantText);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         pushMessage({ role: "assistant", text: `Error: ${message}`, kind: "error" });

@@ -12,6 +12,7 @@ Engine, which is only vet-reviewed for cats (triage_kb.py).
 Shared by the /consult and /consult/audio endpoints in main.py.
 """
 
+import logging
 from typing import Any, Optional
 
 import config
@@ -165,15 +166,21 @@ def _build_response(
 
 def _maybe_attach_audio(response: dict[str, Any], text: str, language_code: str, want_audio: bool) -> None:
     if not want_audio:
+        logging.info("TTS skipped (want_audio=False).")
         return
+    logging.info(f"TTS requested: language_code={language_code}, text_length={len(text)}")
     try:
-        from sarvam_client import synthesize_speech
+        from bhashini_client import synthesize_speech
 
         tts = synthesize_speech(text, language_code)
         response["audio_base64"] = tts["audio_base64"]
         response["audio_mime_type"] = tts["audio_mime_type"]
+        logging.info("TTS succeeded.")
     except Exception as exc:
         # Voice is a nice-to-have on top of the text reply, which the user
-        # already has - don't fail the whole turn if TTS is unavailable.
+        # already has - don't fail the whole turn if TTS is unavailable. Log
+        # the full traceback though, since otherwise a silent tts_error field
+        # is the only trace this ever happened.
+        logging.exception("TTS failed; falling back to text-only reply.")
         response.setdefault("safety_flags", [])
         response["tts_error"] = str(exc)
