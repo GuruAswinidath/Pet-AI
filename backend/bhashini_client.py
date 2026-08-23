@@ -14,6 +14,7 @@ from typing import Any, Optional
 import requests
 
 import config
+from speech_errors import SpeechServiceError
 
 # The rest of the app (frontend, models.py, session state) uses BCP-47-ish
 # codes like "hi-IN" throughout, but Bhashini's pipeline expects bare
@@ -21,16 +22,6 @@ import config
 # picker) isn't actually ISO-639-1 - the real code is "or", so it needs an
 # explicit remap rather than just stripping the "-IN" suffix.
 _LANGUAGE_OVERRIDES = {"od": "or"}
-
-
-class BhashiniError(Exception):
-    """Raised for any Bhashini request/response failure. Carries an optional
-    HTTP status code so app.py can turn it into a matching HTTPException the
-    same way it did for Sarvam's ApiError."""
-
-    def __init__(self, message: str, status_code: Optional[int] = None):
-        super().__init__(message)
-        self.status_code = status_code
 
 
 def _to_bhashini_lang(language_code: Optional[str]) -> str:
@@ -55,7 +46,7 @@ def _stt_service_id(source_lang: str) -> str:
         return "ai4bharat/conformer-multilingual-dravidian-gpu--t4"
     if source_lang in ("hi", "bn", "mr", "pa", "gu", "or", "as"):
         return "ai4bharat/conformer-multilingual-indo_aryan-gpu--t4"
-    raise BhashiniError(f"Unsupported source language for STT: {source_lang}")
+    raise SpeechServiceError(f"Unsupported source language for STT: {source_lang}")
 
 
 def transcribe_audio(file_bytes: bytes, filename: str, language_code: Optional[str] = None) -> dict[str, Any]:
@@ -88,10 +79,10 @@ def transcribe_audio(file_bytes: bytes, filename: str, language_code: Optional[s
         status_code = exc.response.status_code if exc.response is not None else None
         body = exc.response.text if exc.response is not None else None
         logging.error(f"Bhashini STT API error (status={status_code}): {exc}; body={body}")
-        raise BhashiniError(f"Bhashini STT request failed: {exc}", status_code=status_code) from exc
+        raise SpeechServiceError(f"Bhashini STT request failed: {exc}", status_code=status_code) from exc
     except (KeyError, IndexError) as exc:
         logging.error(f"Bhashini STT parsing failed: {exc}")
-        raise BhashiniError("Bhashini STT returned an unexpected response shape.") from exc
+        raise SpeechServiceError("Bhashini STT returned an unexpected response shape.") from exc
 
     logging.info(f"Bhashini STT succeeded: transcript_length={len(transcript or '')}")
     return {"transcript": transcript or "", "language_code": language_code}
@@ -106,7 +97,7 @@ def synthesize_speech(
     Returns {"audio_base64": str, "audio_mime_type": str}."""
     target_lang = _to_bhashini_lang(language_code)
     if target_lang not in ("hi", "gu", "bn", "mr", "pa", "or", "as", "ta", "te", "ml", "kn", "en"):
-        raise BhashiniError(f"Unsupported target language for TTS: {target_lang}")
+        raise SpeechServiceError(f"Unsupported target language for TTS: {target_lang}")
 
     logging.info(f"Bhashini TTS call: language={target_lang}, text_length={len(text)}")
 
@@ -139,20 +130,20 @@ def synthesize_speech(
         status_code = exc.response.status_code if exc.response is not None else None
         body = exc.response.text if exc.response is not None else None
         logging.error(f"Bhashini TTS API error (status={status_code}): {exc}; body={body}")
-        raise BhashiniError(f"Bhashini TTS request failed: {exc}", status_code=status_code) from exc
+        raise SpeechServiceError(f"Bhashini TTS request failed: {exc}", status_code=status_code) from exc
     except (KeyError, IndexError) as exc:
         logging.error(f"Bhashini TTS parsing failed: {exc}")
-        raise BhashiniError("Bhashini TTS returned an unexpected response shape.") from exc
+        raise SpeechServiceError("Bhashini TTS returned an unexpected response shape.") from exc
 
     if not audio_content:
         logging.error("Bhashini TTS returned an empty audioContent field.")
-        raise BhashiniError("Bhashini TTS returned no audio.")
+        raise SpeechServiceError("Bhashini TTS returned no audio.")
 
     logging.info(f"Bhashini TTS succeeded: audio_format={audio_format}, audio_base64_length={len(audio_content)}")
     return {"audio_base64": audio_content, "audio_mime_type": f"audio/{audio_format}"}
 
 
-def describe_api_error(exc: BhashiniError) -> str:
+def describe_api_error(exc: SpeechServiceError) -> str:
     """Mirrors sarvam_client's describe_api_error signature so app.py's
     error-handling call sites didn't need to change shape."""
     return str(exc)

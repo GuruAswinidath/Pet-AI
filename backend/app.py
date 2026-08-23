@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import config
 from agents import knowledge as knowledge_agent
-from bhashini_client import BhashiniError, describe_api_error, synthesize_speech, transcribe_audio
+from bhashini_client import describe_api_error, synthesize_speech
 from models import (
     ConsultTurnRequest,
     ConsultTurnResponse,
@@ -28,6 +28,8 @@ from models import (
     TTSResponse,
 )
 from session_store import get_session
+from speech_errors import SpeechServiceError
+from stt_router import transcribe_audio
 from transcript import save_conversation
 from turn_processor import process_turn
 
@@ -79,7 +81,7 @@ async def consult_audio(
         result = process_turn(session_id, transcript, effective_language, want_audio)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except BhashiniError as exc:
+    except SpeechServiceError as exc:
         raise HTTPException(
             status_code=exc.status_code or 502, detail=f"Speech-to-text service error: {describe_api_error(exc)}"
         ) from exc
@@ -111,7 +113,7 @@ def tts(payload: TTSRequest) -> TTSResponse:
         result = synthesize_speech(payload.text, payload.language_code)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except BhashiniError as exc:
+    except SpeechServiceError as exc:
         raise HTTPException(
             status_code=exc.status_code or 502, detail=f"Text-to-speech service error: {describe_api_error(exc)}"
         ) from exc

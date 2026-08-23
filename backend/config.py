@@ -16,6 +16,13 @@ SAFETY_MODEL = os.getenv("SAFETY_MODEL", "openai/gpt-oss-safeguard-20b")
 NOTE_MODEL = os.getenv("NOTE_MODEL", "openai/gpt-oss-20b")
 KNOWLEDGE_MODEL = os.getenv("KNOWLEDGE_MODEL", "openai/gpt-oss-120b")
 
+# stt_router.py sends English audio to Groq's Whisper instead of Bhashini -
+# Bhashini was chosen for its Indic/code-mixed strength (README 2.1), which
+# English doesn't need, and Groq is faster/cheaper for it. Confirmed live:
+# "distil-whisper-large-v3-en" is decommissioned as of this writing, so this
+# defaults to the turbo model instead of the (dead) English-distilled one.
+GROQ_STT_MODEL = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+
 # bhashini_client.py talks to Bhashini's pipeline-compute inference API
 # directly over HTTP (no official Python SDK) - endpoint is overridable in
 # case a deployment is pinned to a region/version-specific URL.

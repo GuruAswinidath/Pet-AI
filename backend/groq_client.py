@@ -6,11 +6,13 @@ just the model name changing per call. This module is that one client.
 """
 
 import json
+import logging
 from typing import Any, Optional
 
-from groq import Groq
+from groq import APIStatusError, Groq
 
 import config
+from speech_errors import SpeechServiceError
 
 _client: Optional[Groq] = None
 
@@ -60,6 +62,33 @@ def _supports_reasoning_effort(model: str) -> bool:
     model that doesn't support it is a hard 400, so this must stay gated
     rather than sent unconditionally regardless of the *_MODEL env vars."""
     return "gpt-oss" in model
+
+
+def transcribe_audio(file_bytes: bytes, filename: str, language_code: Optional[str] = None) -> dict[str, Any]:
+    """Speech-to-text via Groq's Whisper - stt_router.py routes English here
+    instead of Bhashini (README 2.1: Bhashini was chosen for Indic/code-mixed
+    strength English doesn't need, and Groq is faster/cheaper for it).
+    Returns {"transcript": str, "language_code": str | None}."""
+    client = _get_client()
+    logging.info(f"Groq STT call: model={config.GROQ_STT_MODEL}, audio_bytes={len(file_bytes)}")
+    try:
+        response = client.audio.transcriptions.create(
+            file=(filename, file_bytes),
+            model=config.GROQ_STT_MODEL,
+            temperature=0,
+            response_format="verbose_json",
+            language="en",
+        )
+    except APIStatusError as exc:
+        logging.error(f"Groq STT API error (status={exc.status_code}): {exc}")
+        raise SpeechServiceError(f"Groq STT request failed: {exc}", status_code=exc.status_code) from exc
+    except Exception as exc:
+        logging.error(f"Groq STT error: {exc}")
+        raise SpeechServiceError(f"Groq STT request failed: {exc}") from exc
+
+    transcript = response.text or ""
+    logging.info(f"Groq STT succeeded: transcript_length={len(transcript)}")
+    return {"transcript": transcript, "language_code": language_code}
 
 
 def chat(

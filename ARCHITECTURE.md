@@ -73,10 +73,11 @@ Your available model catalog is on Groq, plus Bhashini for Indic speech. Map the
 | **Note Agent** | GPT OSS 20B | Groq | Summarization from structured state, doesn't need the largest model |
 | **Knowledge Agent** *(optional)* | GPT OSS 120B or Llama 3.3 70B | Groq | Same multilingual generation task as the Conversation Agent, just grounded in RAG context instead of the KB |
 | **Vision** *(Phase 3, photo triage)* | Qwen 3.6 27B | Groq | Only model in your set tagged for vision |
-| **Speech-to-text** | Bhashini ASR | Bhashini | Purpose-built for Indic-language and code-mixed speech, with per-language-family model routing (Dravidian/Indo-Aryan/English) |
-| **Text-to-speech** | Bhashini TTS | Bhashini | Groq's Orpheus only covers English/Arabic — no Indic voice output, so Bhashini fills this gap entirely |
+| **Speech-to-text** (English) | Whisper Large v3 Turbo | Groq | English doesn't need Bhashini's Indic-specific strength, and Groq is faster/cheaper for it |
+| **Speech-to-text** (Indic languages) | Bhashini ASR | Bhashini | Purpose-built for Indic-language and code-mixed speech, with per-language-family model routing (Dravidian/Indo-Aryan) |
+| **Text-to-speech** | Bhashini TTS | Bhashini | Groq's Orpheus only covers English/Arabic — no Indic voice output, so Bhashini fills this gap entirely (kept for English too, for one consistent voice) |
 
-Practical note: since Orchestrator, Intake, Conversation, Safety, and Note agents are all on Groq, you can run them through one client/SDK with just the model name changing per call — keeps your code simple. Bhashini is the one separate integration (its own API key, its own HTTP client) purely for STT/TTS.
+Practical note: since Orchestrator, Intake, Conversation, Safety, and Note agents are all on Groq, you can run them through one client/SDK with just the model name changing per call — keeps your code simple. Bhashini is the one separate integration (its own API key, its own HTTP client) purely for STT/TTS - `stt_router.py` is the only place that decides, per language, which STT provider actually gets called.
 
 ---
 
@@ -86,7 +87,7 @@ Practical note: since Orchestrator, Intake, Conversation, Safety, and Note agent
 User speaks
    │
    ▼
-[STT: Bhashini] → transcript + language_code
+[STT: Groq for English, Bhashini for Indic languages] → transcript + language_code
    │
    ▼
 Orchestrator: is this a new complaint or a follow-up in an existing session?
