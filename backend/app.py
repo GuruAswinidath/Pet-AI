@@ -9,6 +9,7 @@ Run directly with `python app.py` - no separate uvicorn command needed.
 """
 
 import logging
+import threading
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +45,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _seed_kb_background() -> None:
+    """Load knowledge base documents in background without blocking server startup."""
+    import os
+    from rag_store import ingest_document, list_documents
+    
+    docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge_docs")
+    if not os.path.isdir(docs_dir):
+        logging.info(f"No knowledge_docs directory found at {docs_dir}")
+        return
+    
+    filenames = sorted(f for f in os.listdir(docs_dir) if f.endswith(".md"))
+    if not filenames:
+        logging.info(f"No .md files found in {docs_dir}")
+        return
+    
+    already_seeded = {doc["filename"] for doc in list_documents()}
+    
+    for filename in filenames:
+        if filename in already_seeded:
+            logging.info(f"Skipping {filename}: already in the store")
+            continue
+        path = os.path.join(docs_dir, filename)
+        try:
+            with open(path, "rb") as f:
+                file_bytes = f.read()
+            result = ingest_document(filename, file_bytes)
+            logging.info(f"Ingested {filename}: {result['chunk_count']} chunks (doc_id={result['doc_id']})")
+        except Exception as e:
+            logging.error(f"Error ingesting {filename}: {e}")
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Start KB seeding in background thread on app startup."""
+    logging.info("Starting background knowledge base seeding...")
+    kb_thread = threading.Thread(target=_seed_kb_background, daemon=True)
+    kb_thread.start()
 
 
 @app.get("/health")
@@ -162,3 +202,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("app:app", host=config.HOST, port=config.PORT, reload=config.RELOAD)
+

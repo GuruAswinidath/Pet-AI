@@ -1,1 +1,2 @@
-web: python scripts/seed_kb.py && python app.py
+web: python app.py
+
