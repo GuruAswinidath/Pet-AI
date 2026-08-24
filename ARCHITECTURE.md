@@ -1,45 +1,131 @@
-# AI Vet Triage Chatbot — Multi-Agent Architecture Spec
+# AI Vet Triage Chatbot — Multi-Agent Architecture
 
-**Scope: cats only.** This prototype supports cats exclusively - every prompt, the
-triage knowledge base, and the test suite are written and reviewed for feline
-presentation specifically. See §10 for why that's not just a wording choice (several
-symptoms mean something meaningfully different in a cat than in a dog), and
-`turn_processor.py` for the out-of-scope redirect that fires if a message clearly
-describes a different animal.
+**Scope: cats only.** Every prompt, the triage knowledge base, and the test suite are
+written for feline presentation specifically. See [§10](#10-cat-specific-health-scenarios-demo-set)
+for why that isn't just a wording choice — several symptoms mean something materially
+different in a cat than in a dog — and `turn_processor.py` for the out-of-scope redirect
+that fires when a message clearly describes another animal.
 
-High-level flow (see §3 for the full multi-agent breakdown this simplifies):
+> Section numbers in this document are referenced from docstrings throughout the
+> backend (e.g. *"README section 3"* in `turn_processor.py`). They are stable — add
+> new sections at the end rather than renumbering.
+
+---
+
+## System at a glance
+
+```mermaid
+flowchart LR
+    subgraph client["Browser — Next.js 16 / React 19"]
+        UI["Chat UI<br/>text + mic"]
+        SET["Settings panel<br/>KB / LLM / RAG switch"]
+    end
+
+    subgraph api["FastAPI — backend/app.py"]
+        C["/consult<br/>/consult/audio"]
+        K["/kb/*"]
+        T["/tts"]
+    end
+
+    subgraph core["Turn orchestration"]
+        TP["turn_processor.process_turn"]
+        SS["session_store<br/>in-memory dict"]
+        TE["triage_engine<br/>DETERMINISTIC"]
+        AG["6 LLM agents"]
+    end
+
+    subgraph ext["External services"]
+        GROQ["Groq<br/>LLMs + Whisper STT"]
+        BH["Bhashini<br/>Indic STT + all TTS"]
+    end
+
+    subgraph disk["On disk"]
+        KB["triage_kb.py<br/>18 vet-reviewed entries"]
+        RAG["kb_store/<br/>index.json + vectors.npy"]
+        RES["results/<br/>*.txt transcripts"]
+    end
+
+    UI --> C
+    SET --> K
+    UI --> T
+    C --> TP
+    TP --> SS
+    TP --> TE
+    TP --> AG
+    TE --> KB
+    AG --> GROQ
+    K --> RAG
+    C --> BH
+    T --> BH
+    TP --> RES
+```
+
+The one rule the whole design exists to enforce: **the LLMs handle language, the
+deterministic engine handles urgency.** Everything below is a consequence of that.
+
+---
+
+## Repository map
 
 ```
-Cat Parent Voice/Text
-   |
-   v
-Speech-to-Text (if voice)
-   |
-   v
-AI Veterinary Assistant (Orchestrator -> Intake -> Triage Engine -> Conversation -> Safety)
-   |
-   v
-Cat Health Knowledge Retrieval (RAG, for general questions - see §5)
-   |
-   v
-Triage Decision (deterministic, never an LLM judgment call - see §1)
-   |
-   v
-Guidance Response
-   |
-   v
-SOAP Consultation Note (see §11)
+backend/
+  app.py               FastAPI app — every HTTP endpoint (§7)
+  turn_processor.py    One conversation turn, start to finish (§3)
+  session_store.py     In-memory session state (§4)
+  triage_engine.py     classify_urgency() — the deterministic decision (§1)
+  triage_kb.py         18 vet-reviewed cat entries + symptom aliases (§4.1, §10)
+  agents/
+    orchestrator.py    Route this turn: triage or knowledge
+    intake.py          Free text -> structured symptom fields
+    conversation.py    Clarifying question / final reply phrasing
+    safety.py          Guardrail pass over the draft reply
+    note.py            SOAP consultation note (§11)
+    knowledge.py       General Q&A: kb / llm / rag modes (§5, §8)
+  groq_client.py       One shared Groq client for all agents + English STT
+  bhashini_client.py   Indic STT + all TTS over Bhashini's pipeline API
+  stt_router.py        ffmpeg normalize, then pick the STT provider by language
+  speech_errors.py     Shared SpeechServiceError for both STT/TTS providers
+  transcript.py        save_conversation() -> results/*.txt (§6)
+  rag_store.py         Upload -> chunk -> embed -> retrieve (§8)
+  models.py            Pydantic request/response schemas
+  config.py            Env-driven model IDs, thresholds, paths
+  scripts/seed_kb.py   Ingest knowledge_docs/ into the RAG store
+  knowledge_docs/      13 original cat-care markdown documents
+  kb_store/            RAG store: index.json + vectors.npy
+  results/             Saved plain-text session transcripts
+  tests/               test_triage_engine.py, test_orchestrator.py
+
+frontend/
+  app/page.tsx                  Composes Header / MessageList / Composer / SettingsPanel
+  hooks/useTriageChat.ts        Session id, message list, urgency, audio playback
+  hooks/useVoiceRecorder.ts     MediaRecorder -> audio/webm blob
+  components/SettingsPanel.tsx  KB upload/list/delete + KB|LLM|RAG ask box
+  lib/api.ts, lib/types.ts      Typed fetch wrappers mirroring models.py
 ```
+
+---
 
 ## 1. Design principle before anything else
 
-In an agent framework it's tempting to make everything "an agent." Don't.
-**Only the conversational/reasoning parts should be LLM agents. The urgency
-decision must stay a deterministic function**, called *by* an agent as a
-tool, not decided *by* an agent's judgment. This is the same rule from the
-earlier plan — an agent framework doesn't change it, it just gives you a
-cleaner way to enforce it (the rules engine becomes a tool with a fixed
-output schema that no agent can talk its way around).
+In an agent framework it is tempting to make everything "an agent." Don't.
+**Only the conversational and reasoning parts are LLM agents. The urgency decision is
+a deterministic function**, called *by* an agent as a tool, never decided *by* an
+agent's judgment.
+
+`triage_engine.classify_urgency()` makes no network call and reads nothing at runtime
+except the in-code `TRIAGE_KB`. That is what makes it independently testable
+(`tests/test_triage_engine.py`) and auditable: if a vet approves "vomiting → these
+red flags", that exact entry fires every time, for every user, in every language.
+
+```mermaid
+flowchart LR
+    A["LLM agents<br/>language, tone, extraction"] -->|structured fields| B["Triage Engine<br/>pure Python"]
+    B -->|urgency + matched entries| C["LLM agents<br/>phrase the answer"]
+    style B fill:#1f6f43,stroke:#0d3f26,color:#ffffff
+```
+
+Everything an LLM produces in this system is either *input to* or *a rendering of*
+that middle box. No agent can talk its way around it.
 
 ---
 
@@ -47,85 +133,224 @@ output schema that no agent can talk its way around).
 
 | Agent | Type | Job | Owns |
 |---|---|---|---|
-| **Orchestrator** | LLM agent (light) | Routes the conversation turn to the right agent, tracks session state | Conversation flow, not medical content |
-| **Intake Agent** | LLM agent | Extracts structured fields from free-text/voice transcript: species, symptom(s), duration, severity cues, breed/age if mentioned | Turning messy human speech into structured data |
-| **Triage Engine** | Deterministic tool (not an LLM) | Takes structured fields → checks against KB (in-prompt, see §4) → returns urgency classification + matched guidance | The safety-critical decision |
-| **Conversation Agent** | LLM agent | Takes urgency + KB guidance → asks a clarifying follow-up question OR phrases the final reply naturally, in the user's language | Tone, clarity, language |
-| **Safety Agent** | LLM agent (or classifier) | Reviews the Conversation Agent's draft reply before it goes out — checks for drug names, dosages, diagnostic overreach | Final guardrail, veto power |
-| **Note Agent** | LLM agent | At end of session, compiles the full transcript + urgency + guidance into a structured follow-up note, and triggers saving the raw transcript to disk (see §8) | The document, not the live conversation |
-| **Knowledge Agent** *(optional, see §5)* | LLM agent + RAG | Answers general informational questions that aren't urgent triage ("is this breed prone to X", "what does hip dysplasia mean") | Background info, explicitly not urgency decisions |
+| **Orchestrator** | LLM (light) | Routes the turn to triage or knowledge | Conversation flow, not medical content |
+| **Intake** | LLM | Extracts species, symptom, duration, severity cues, breed, age from free text | Turning messy speech into structured data |
+| **Triage Engine** | **Deterministic function** | Structured fields → urgency + matched KB entries + missing info | The safety-critical decision |
+| **Conversation** | LLM | Asks ONE clarifying question, or phrases the final reply in the user's language | Tone, clarity, language |
+| **Safety** | LLM | Reviews the draft reply for drug names, dosages, diagnostic overreach | Final guardrail, veto power |
+| **Note** | LLM | Compiles the finished session into a SOAP note (§11) | The document, not the live conversation |
+| **Knowledge** | LLM + RAG | General non-urgent questions | Background info, explicitly never urgency |
 
-This is 5–7 nodes, which is plenty. Resist adding more agents than this for an MVP — each additional agent is another place a conversation can go subtly wrong.
+Seven nodes, one of which isn't a model. Resist adding more — each extra agent is
+another place a conversation can go subtly wrong.
+
+**The Knowledge Agent's boundary is structural, not just prompted:**
+`agents/knowledge.py` never writes to session state. It is reachable from the
+`/kb/ask` endpoint and from the Orchestrator's `knowledge` route — in both cases it
+answers a question, it does not classify a cat.
 
 ---
 
 ## 2.1 Which model for which agent, and where it's served
 
-Your available model catalog is on Groq, plus Bhashini for Indic speech. Map them like this:
+Defaults live in `config.py` and every one of them is overridable by env var, so a
+retired or renamed Groq model ID never requires a code change.
 
-| Agent | Model | Source | Why this one |
+| Agent / job | Model (`config.py` default) | Host | Why this one |
 |---|---|---|---|
-| **Orchestrator** | GPT OSS 20B | Groq | Light routing logic — doesn't need your biggest model, keep it fast/cheap |
-| **Intake Agent** (extraction) | GPT OSS 120B | Groq | Function-calling/tool-use is where the 120B is listed as strong — this agent's whole job is producing clean structured output, worth the larger model |
-| **Triage Engine** | *(not a model)* | — | Plain deterministic Python function, no LLM call at all |
-| **Conversation Agent** (reply generation, in-language) | Llama 3.3 70B **or** GPT OSS 120B | Groq | Both are tagged multilingual — test both on real Hindi/regional-language output for tone and pick whichever sounds more natural; Llama 3.3 70B is often the stronger multilingual generator, GPT OSS 120B the stronger instruction-follower for staying inside guardrails. Worth A/B-ing early. |
-| **Safety Agent** | Safety GPT OSS 20B | Groq | Purpose-built for exactly this — moderation/guardrail pass on the draft reply before it goes out |
-| **Note Agent** | GPT OSS 20B | Groq | Summarization from structured state, doesn't need the largest model |
-| **Knowledge Agent** *(optional)* | GPT OSS 120B or Llama 3.3 70B | Groq | Same multilingual generation task as the Conversation Agent, just grounded in RAG context instead of the KB |
-| **Vision** *(Phase 3, photo triage)* | Qwen 3.6 27B | Groq | Only model in your set tagged for vision |
-| **Speech-to-text** (English) | Whisper Large v3 Turbo | Groq | English doesn't need Bhashini's Indic-specific strength, and Groq is faster/cheaper for it |
-| **Speech-to-text** (Indic languages) | Bhashini ASR | Bhashini | Purpose-built for Indic-language and code-mixed speech, with per-language-family model routing (Dravidian/Indo-Aryan) |
-| **Text-to-speech** | Bhashini TTS | Bhashini | Groq's Orpheus only covers English/Arabic — no Indic voice output, so Bhashini fills this gap entirely (kept for English too, for one consistent voice) |
+| Orchestrator | `openai/gpt-oss-20b` | Groq | Light routing logic — keep it fast and cheap |
+| Intake | `openai/gpt-oss-120b` | Groq | Clean structured extraction is this agent's entire job |
+| Triage Engine | *(not a model)* | — | Plain Python, no LLM call at all |
+| Conversation | `openai/gpt-oss-120b` | Groq | Strong instruction-following keeps replies inside the guardrails while staying multilingual |
+| Safety | `openai/gpt-oss-safeguard-20b` | Groq | Purpose-built moderation pass over the draft reply |
+| Note | `openai/gpt-oss-20b` | Groq | Summarization from already-structured state |
+| Knowledge | `openai/gpt-oss-120b` | Groq | Same generation task as Conversation, grounded in RAG context |
+| STT — English | `whisper-large-v3-turbo` | Groq | English doesn't need Bhashini's Indic strength; Groq is faster and cheaper |
+| STT — Indic | `conformer-multilingual-*` | Bhashini | Purpose-built for Indic and code-mixed speech, routed per language family |
+| TTS — all languages | `Bhashini/IITM/TTS` | Bhashini | Groq's TTS has no Indic voices; one provider keeps a consistent voice |
 
-Practical note: since Orchestrator, Intake, Conversation, Safety, and Note agents are all on Groq, you can run them through one client/SDK with just the model name changing per call — keeps your code simple. Bhashini is the one separate integration (its own API key, its own HTTP client) purely for STT/TTS - `stt_router.py` is the only place that decides, per language, which STT provider actually gets called.
+Because every LLM agent is on Groq, they all run through **one client wrapper**
+(`groq_client.py`) with only the model name changing per call. Two details in that
+wrapper matter:
+
+- **`reasoning_effort: "low"` is injected for `gpt-oss` models only.** That family
+  does hidden reasoning that draws from the same `max_tokens` budget, which caused two
+  real failures: truncated JSON from the Safety and Note agents, and Conversation
+  replies cut off mid-sentence. The flag is `gpt-oss`-specific — sending it to another
+  model is a hard 400, so it stays gated on the model name rather than sent
+  unconditionally.
+- **`_unwrap_accidental_json()`** pulls the message back out when a model wraps a
+  plain-text answer in `{"reply": "..."}`, rather than showing the user raw JSON.
+
+Bhashini is the one separate integration — its own key, its own HTTP client, no SDK.
+`stt_router.py` is the **only** place that decides which STT provider gets called.
 
 ---
 
 ## 3. Turn-by-turn flow
 
-```
-User speaks
-   │
-   ▼
-[STT: Groq for English, Bhashini for Indic languages] → transcript + language_code
-   │
-   ▼
-Orchestrator: is this a new complaint or a follow-up in an existing session?
-   │
-   ▼
-Intake Agent: extract {species, symptom, duration, severity_cues, additional_notes}
-   │
-   ▼
-Triage Engine (tool call, deterministic):
-   input: extracted fields
-   output: {urgency: emergency|soon|home, matched_kb_entry, missing_info: [...]}
-   │
-   ├── if missing_info is non-empty and urgency isn't already "emergency":
-   │      → Conversation Agent asks ONE clarifying question, loop back to user
-   │
-   └── else:
-          → Conversation Agent drafts the reply (grounded in matched_kb_entry + urgency)
-                │
-                ▼
-          Safety Agent reviews draft
-                │
-                ├── fail → Conversation Agent regenerates with the violation flagged,
-                │           or falls back to a safe canned message
-                │
-                └── pass → send to TTS (Bhashini) + display text
-                                │
-                                ▼
-                          Session marked complete →
-                          Note Agent generates the follow-up note
+`turn_processor.process_turn()` is the whole flow in one function. Both `/consult`
+and `/consult/audio` funnel into it.
+
+```mermaid
+flowchart TD
+    START(["User message<br/>text or voice"]) --> STT{"Voice?"}
+    STT -->|yes| NORM["stt_router<br/>ffmpeg to mono 16 kHz WAV"]
+    NORM --> ROUTE_STT{"language is English?"}
+    ROUTE_STT -->|yes| GW["Groq Whisper"]
+    ROUTE_STT -->|no| BW["Bhashini ASR"]
+    GW --> SESS
+    BW --> SESS
+    STT -->|no| SESS["get_or_create_session<br/>append user turn"]
+
+    SESS --> ORCH["Orchestrator.route_turn"]
+    ORCH --> RT{"route?"}
+
+    RT -->|knowledge| KA["Knowledge Agent<br/>RAG mode"]
+    KA --> FINAL
+
+    RT -->|triage| INTAKE["Intake Agent<br/>extract and merge fields"]
+    INTAKE --> SPEC{"species is other?"}
+    SPEC -->|yes| OOS["Out-of-scope redirect<br/>session complete"]
+    OOS --> SAVE
+
+    SPEC -->|no| TRIAGE["Triage Engine<br/>classify_urgency"]
+    TRIAGE --> NEED{"missing_info<br/>and not emergency?"}
+
+    NEED -->|no| DRAFT
+    NEED -->|yes| CAP{"clarify_count<br/>at cap?"}
+    CAP -->|no| ASK["Conversation Agent<br/>ONE clarifying question"]
+    ASK --> LOOP(["Return, await reply<br/>is_final = false"])
+    CAP -->|yes| BUMP["Cap fallback<br/>escalate to at least soon"]
+    BUMP --> DRAFT
+
+    DRAFT["Conversation Agent<br/>draft final reply"] --> SAFE["Safety Agent review"]
+    SAFE --> PASS{"passed?"}
+    PASS -->|yes| NOTE
+    PASS -->|no| REGEN["Regenerate with<br/>violations flagged"]
+    REGEN --> SAFE2{"passed on retry?"}
+    SAFE2 -->|yes| NOTE
+    SAFE2 -->|no| CANNED["Canned safe message<br/>for this urgency level"]
+    CANNED --> NOTE
+
+    NOTE["Note Agent<br/>SOAP note"] --> SAVE["save_conversation<br/>results/*.txt"]
+    SAVE --> FINAL["Optional TTS<br/>Bhashini"]
+    FINAL --> OUT(["Reply + urgency + note<br/>is_final = true"])
+
+    style TRIAGE fill:#1f6f43,stroke:#0d3f26,color:#ffffff
+    style LOOP fill:#7a5b00,stroke:#4a3600,color:#ffffff
 ```
 
-Key detail: **the clarifying-question loop is capped.** Don't let the Intake/Conversation agents ask indefinitely — 2–3 clarifying questions max, then fall back to the most cautious applicable urgency level ("when in doubt, recommend seeing a vet soon" rather than staying stuck in a loop).
+### The Orchestrator's two fast paths
+
+Two cases skip the LLM routing call entirely, because the model demonstrably got them
+wrong and each mistake had a real cost:
+
+1. **`status == "awaiting_clarification"`** → always triage. The Conversation Agent
+   just asked a triage question; the answer belongs to the same flow.
+2. **A short reply with existing symptom context** (4 words or fewer, no `?`, symptoms
+   already on file) → always triage. A session's status flips to `complete` after
+   *every* final reply, so the next message can be a bare "yes" confirming something
+   safety-relevant like a fever, with no `awaiting_clarification` flag protecting it.
+   The Orchestrator sees only bare text — it misrouted those to `knowledge`, which then
+   answered "I don't have that in the knowledge base" instead of ever triaging the
+   detail.
+
+If the routing call fails outright, the fallback is `triage` — better to run the
+safety-checked path than let an unclassified message reach the Knowledge Agent.
+
+### The clarifying loop is capped
+
+`MAX_CLARIFYING_QUESTIONS` (default 3) bounds the loop. On hitting the cap with
+information still missing, `apply_clarify_cap_fallback()` raises urgency to **at least
+`soon`** and produces a final answer. *When in doubt, recommend seeing a vet* beats
+staying stuck in a question loop.
+
+Note the ordering: `needs_clarification` also requires `urgency != "emergency"`.
+**An emergency is never held back to ask a follow-up question.**
+
+### A voice turn, end to end
+
+```mermaid
+sequenceDiagram
+    participant U as Cat owner
+    participant FE as Next.js frontend
+    participant API as FastAPI
+    participant R as stt_router
+    participant G as Groq
+    participant B as Bhashini
+    participant E as Triage Engine
+
+    U->>FE: hold mic, speak
+    FE->>API: POST /consult/audio (webm blob)
+    API->>R: transcribe_audio
+    R->>R: ffmpeg to mono 16 kHz WAV
+    alt language is English
+        R->>G: whisper-large-v3-turbo
+    else Indic language
+        R->>B: ASR pipeline, family-routed serviceId
+    end
+    R-->>API: transcript
+    API->>G: Orchestrator, then Intake
+    G-->>API: route + structured fields
+    API->>E: classify_urgency(fields)
+    E-->>API: urgency + matched entries + missing_info
+    API->>G: Conversation, Safety, Note
+    G-->>API: reply + SOAP note
+    opt want_audio
+        API->>B: TTS
+        B-->>API: base64 audio
+    end
+    API-->>FE: reply, urgency, note, audio
+    FE->>U: bubble + urgency banner + autoplay
+```
+
+TTS failure is deliberately non-fatal: the text reply already exists, so the turn
+returns with a `tts_error` field instead of failing. The frontend also falls back to
+showing text whenever `audio_base64` is absent, so a voice-only session with broken
+TTS never renders an empty bubble.
+
+---
+
+## 3.1 Speech pipeline
+
+```mermaid
+flowchart TD
+    A["Browser MediaRecorder<br/>audio/webm blob"] --> B["POST /consult/audio"]
+    B --> C["stt_router._normalize_audio<br/>ffmpeg: strip video, mono, 16 kHz WAV"]
+    C --> D{"bare language code"}
+    D -->|en| E["groq_client.transcribe_audio<br/>whisper-large-v3-turbo"]
+    D -->|"ta te kn ml"| F["Bhashini ASR<br/>conformer-multilingual-dravidian"]
+    D -->|"hi bn mr pa gu or as"| G["Bhashini ASR<br/>conformer-multilingual-indo_aryan"]
+    E --> H["transcript"]
+    F --> H
+    G --> H
+    H --> I["process_turn"]
+    I --> J{"want_audio?"}
+    J -->|no| K["text-only reply"]
+    J -->|yes| L["Bhashini TTS<br/>Bhashini/IITM/TTS, female, 22.05 kHz"]
+    L --> M["base64 audio attached to response"]
+    L -.->|failure| K
+```
+
+Three details that are easy to lose:
+
+- **ffmpeg is a hard runtime dependency** for voice input. Browsers hand over
+  `audio/webm`; both providers want normalized PCM WAV. A missing ffmpeg binary
+  surfaces as a `RuntimeError`, not a transcription failure.
+- **Bhashini wants bare ISO-639-1 codes.** The rest of the app uses BCP-47-ish codes
+  (`hi-IN`), so `bhashini_client` strips the suffix — and remaps `od` → `or`, since the
+  frontend's Odia option isn't the real ISO code.
+- **TTS always goes to Bhashini,** English included, so the assistant has one
+  consistent voice regardless of language.
 
 ---
 
 ## 4. Session state schema
 
-Keep this simple and framework-agnostic — whatever agent framework you use (LangGraph, CrewAI, a custom loop), pass this object between nodes:
+`session_store.py` holds these as a process-local dict, keyed by `session_id`. The
+whole object is what gets passed between agent "nodes", and it is what the Note Agent
+reads at the end.
 
 ```json
 {
@@ -135,236 +360,422 @@ Keep this simple and framework-agnostic — whatever agent framework you use (La
   "breed": null,
   "age": null,
   "turns": [
-    {"role": "user", "text": "...", "timestamp": "..."},
+    {"role": "user", "text": "...", "timestamp": "2026-08-24T09:14:02+00:00"},
     {"role": "assistant", "text": "...", "timestamp": "..."}
   ],
   "extracted_symptoms": [
     {"symptom": "vomiting", "duration": "since this morning", "severity_cues": []}
   ],
   "urgency": "soon",
-  "matched_kb_entries": ["Vomiting"],
+  "matched_kb_entries": ["vomiting"],
   "missing_info": [],
   "safety_flags": [],
-  "status": "in_progress"
+  "status": "in_progress",
+  "clarify_count": 0,
+  "followup_note": null,
+  "transcript_path": null
 }
 ```
 
-This whole object is what the Note Agent reads at the end — the follow-up note is just this state, summarized in prose, and it's also what gets written to the results folder as a plain-text transcript (§8).
+`species` starts as `"cat"` on every session — the Intake Agent only ever overwrites it
+to `"other"`, which is the signal `turn_processor` uses to redirect out of triage.
+
+### Session lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> in_progress: first message
+    in_progress --> awaiting_clarification: missing info, under cap
+    awaiting_clarification --> awaiting_clarification: still missing, under cap
+    awaiting_clarification --> complete: enough info, or cap hit
+    in_progress --> complete: enough info on first turn
+    in_progress --> complete: species is other (redirect)
+    complete --> in_progress: user adds more detail
+    complete --> [*]: explicit end via the session end endpoint
+```
+
+`complete` is not terminal — a user can keep typing, and the same session picks back
+up. That is exactly why the Orchestrator needs its short-reply fast path (§3).
+
+**This store is intentionally the weakest link.** It is process-local and in-memory:
+restarting the backend drops every live session, and it does not survive more than one
+worker. The persisted artifact is the transcript on disk (§6). Swapping in Redis or a
+database means changing this one module — the agents only ever see the dict shape.
 
 ---
 
-## 4.1 The knowledge base — no database, no file reads at runtime
+## 4.1 The triage knowledge base — no database, no runtime file reads
 
-Decision made: **the KB is not read from a spreadsheet or database at request time.** Instead, bake the (vet-reviewed) KB content directly into the Intake/Triage prompt as a static block — either as literal text in the system prompt, or as a Python constant/dict in code. Same grounding as a file-based lookup, zero I/O, nothing to wire up.
+`triage_kb.py` bakes the vet-reviewed KB directly into code as a Python dict. Same
+grounding as a file or database lookup, zero I/O, nothing to wire up, and it versions
+with the code that reads it.
 
 ```python
-# triage_kb.py — vet-reviewed, static, versioned with your code, cats only
-TRIAGE_KB = {
+TRIAGE_KB: dict[str, dict] = {
     "vomiting": {
         "label": "Vomiting",
-        "typical_triage_level": "varies",  # documentation only, see §10 - engine still decides dynamically
+        "typical_triage_level": "varies",   # documentation only — see below
         "questions_to_ask": ["Does the vomit contain hair, food, or fluid?", "..."],
-        "red_flags": ["blood in vomit", "distended abdomen", "3+ times in a few hours", "lethargy"],
+        "red_flags": ["blood in vomit", "distended abdomen", "3+ times in a few hours"],
         "yellow_flags": ["persists past 24 hours"],
-        "owner_guidance": "Withhold food a few hours (not water), monitor for repeat episodes.",
+        "owner_guidance": "Withhold food a few hours (not water), monitor for repeats.",
     },
-    # ... rest of the ~17 entries, see §10
+    # ... 18 entries total, see §10
 }
+
+SYMPTOM_ALIASES: dict[str, str] = {"throwing up": "vomiting", ...}
 ```
 
-The Triage Engine (§2, §6) is still a deterministic function — it just reads `TRIAGE_KB` from this in-code constant instead of a JSON/Excel file. This keeps the safety property (fixed, vet-approved, auditable) while dropping the file/database dependency entirely.
+`typical_triage_level` is **documentation only** — the engine never reads it. Urgency is
+always derived from actual red/yellow flag matches, per §1.
+
+Each field has exactly one consumer:
+
+| Field | Read by | Used for |
+|---|---|---|
+| `label` | Triage Engine, Knowledge Agent | Symptom normalization, KB-mode answers |
+| `questions_to_ask` | Conversation Agent | Vet-reviewed phrasing for the one clarifying question |
+| `red_flags` / `yellow_flags` | Triage Engine | The urgency decision itself |
+| `owner_guidance` | Conversation Agent, Note Agent | Interim advice in the reply and the SOAP Plan |
+| `typical_triage_level` | *(nothing)* | Human documentation |
+
+### Inside `classify_urgency()`
+
+```mermaid
+flowchart TD
+    A["extracted_symptoms[]"] --> B{"empty?"}
+    B -->|yes| C["urgency = soon<br/>missing_info = ['symptom']"]
+    B -->|no| D["for each symptom"]
+
+    D --> E["normalize_symptom<br/>exact key -> alias table -> substring"]
+    E --> F{"matched a KB key?"}
+    F -->|no| G["missing_info += unrecognized_symptom<br/>urgency at least soon"]
+    F -->|yes| H["drop negated cues<br/>'no vomiting', 'not hiding'"]
+
+    H --> I["text_blob = positive cues + duration"]
+    I --> J{"red flag match?"}
+    J -->|yes| K["EMERGENCY"]
+    J -->|no| L{"yellow flag match?"}
+    L -->|yes| M["SOON"]
+    L -->|no| N{"any duration or cues at all?"}
+    N -->|no| O["missing_info += duration_or_severity<br/>SOON"]
+    N -->|yes| P["HOME"]
+
+    K --> Q["worst_urgency = most cautious<br/>across all symptoms"]
+    M --> Q
+    O --> Q
+    P --> Q
+    G --> Q
+
+    style K fill:#8b1a1a,stroke:#5a1010,color:#ffffff
+    style M fill:#7a5b00,stroke:#4a3600,color:#ffffff
+    style P fill:#1f6f43,stroke:#0d3f26,color:#ffffff
+```
+
+Three matching rules carry real safety weight, and all three exist because of observed
+failures:
+
+- **Fuzzy flag matching errs toward sensitivity.** Real phrasing rarely matches a KB
+  phrase word for word ("blood" vs. "blood in vomit"), so exact containment falls back
+  to significant-word overlap. A missed red flag is far more dangerous than an
+  over-cautious one. Generic time words (`hours`, `days`, `morning`) are stopworded
+  precisely because they appear in both duration text *and* frequency-based red flags
+  like "3+ times in a few hours", which produced false emergencies.
+- **Negated cues never match flags.** The Intake Agent is asked to keep denials
+  ("no vomiting") because they are useful context for the note — but left unfiltered
+  they let a denial trigger the exact flag it denied.
+- **Bare-symptom flags use exact matching, not fuzzy.** When a flag is just the
+  symptom's own name (`"seizure"` on the seizure entry), reporting it at all is the red
+  flag. Fuzzy matching here would let a symptom name self-match phrases like "vomiting
+  blood" through a shared word, turning routine reports into emergencies.
+
+Urgency is ranked `home < soon < emergency`, and across multiple symptoms the **most
+cautious** level always wins.
 
 ---
 
-## 5. The RAG question — direct answer
+## 5. RAG: where it belongs and where it doesn't
 
-**For the triage decision itself: no, don't use RAG, and no database either (see §4.1).** Nothing changes here from the earlier recommendation. The Triage Engine should stay a deterministic lookup against the in-code KB (species + symptom → red/yellow flags + guidance), called as a tool. RAG introduces similarity-search fuzziness into exactly the one decision that needs to be predictable and auditable. If a vet reviews and approves "vomiting → these red flags," you want that exact entry retrieved every time someone says "throwing up," not a semantically-similar-but-not-identical entry pulled by embedding search.
+**For the triage decision: no RAG, and no database.** The Triage Engine stays a
+deterministic lookup against the in-code KB. RAG introduces similarity-search fuzziness
+into exactly the one decision that must be predictable and auditable.
 
-**Where RAG *does* earn its place: the optional Knowledge Agent.** If you want the chatbot to also answer general, non-urgent questions — "is it normal for kittens to lose baby teeth," "what's hyperthyroidism in cats," "how much should a 6-month-old kitten weigh" — that's a different job than triage, and a small RAG setup is a reasonable fit there:
+**Where RAG earns its place: the Knowledge Agent** — general, non-urgent questions
+("is it normal for kittens to lose baby teeth?", "how much should a 6-month-old kitten
+weigh?"). Different job, different tolerance for fuzziness.
 
-- **Corpus**: general cat-care reference material — breed guides, common-condition explainers, care guides. Public/licensed veterinary reference content, not your triage KB (keep those separate). `backend/knowledge_docs/` (§10) is the seed corpus for this prototype - one document per demo scenario plus a cat-toxins reference, ingestible via `backend/scripts/seed_kb.py`.
-- **Chunking**: a few hundred words per chunk, by topic/section.
-- **Embedding + store**: a lightweight setup is enough at this scale — `sentence-transformers` embeddings into Chroma or pgvector. No need for anything heavier.
-- **Retrieval**: top-3–5 chunks, fed to the Knowledge Agent as context, answer generated with citations back to the source doc.
-- **Hard boundary**: the Knowledge Agent should never issue an urgency classification. If a "general" question turns out to describe an actual symptom ("is it normal for a cat to vomit up a hairball occasionally" — okay, informational — vs. "my cat has been vomiting for 2 days" — that's triage), the Orchestrator should route it to the Intake Agent/Triage Engine instead, not let the Knowledge Agent free-wheel a medical read on an active symptom.
+```mermaid
+flowchart LR
+    Q["Question"] --> R{"About a live symptom<br/>on a specific cat?"}
+    R -->|yes| T["Triage path<br/>deterministic KB lookup"]
+    R -->|no| K["Knowledge path<br/>RAG over knowledge_docs"]
+    T --> TU["Urgency decision<br/>auditable, fixed"]
+    K --> KA["Informational answer<br/>with source citations"]
+    KA -.->|never| TU
 
-So: **two knowledge stores, two different retrieval strategies, doing two different jobs** — a deterministic keyed lookup for anything urgency-related, and RAG only for general background Q&A that's explicitly outside the safety-critical path. Build the deterministic one first (you already have it); add the Knowledge Agent + RAG later, once the core triage loop is solid, since it's genuinely optional for an MVP.
+    style TU fill:#1f6f43,stroke:#0d3f26,color:#ffffff
+```
+
+**Two knowledge stores, two retrieval strategies, two different jobs:**
+
+| | Triage KB | RAG store |
+|---|---|---|
+| Lives in | `triage_kb.py` (code) | `kb_store/` (index.json + vectors.npy) |
+| Retrieval | Exact key → alias → substring | Cosine similarity, top-k |
+| Feeds | The urgency decision | General Q&A answers only |
+| Editable at runtime | No — code change + review | Yes — upload/delete via the UI |
+| Can affect urgency | **Yes, exclusively** | **Never** |
+
+Seed corpus: `backend/knowledge_docs/` holds 13 original markdown documents — one per
+demo scenario, a cat-toxins reference, and general-care documents (kitten basics,
+vaccination schedule, weight and nutrition, dental health, senior cat health, litter
+box behavior) covering the non-urgent questions the Knowledge Agent actually fields.
+Ingest them with `python scripts/seed_kb.py`.
 
 ---
 
 ## 6. Saving the conversation to disk
 
-At session end (right where the Note Agent runs), also write the raw turn-by-turn transcript to a plain `.txt` file in a `results/` folder — separate from the structured follow-up note, useful for your own debugging/logs.
+At session end, `transcript.save_conversation()` writes the raw turn-by-turn transcript
+to `results/{session_id}_{timestamp}.txt` — separate from the structured SOAP note, and
+useful as a debugging and audit trail.
 
-```python
-import os
-from datetime import datetime
+It is called once per completed session — on a final reply, on the out-of-scope
+redirect, and from `POST /consult/{id}/end` — never per turn.
 
-RESULTS_DIR = "results"
-
-def save_conversation(session_state: dict) -> str:
-    os.makedirs(RESULTS_DIR, exist_ok=True)
-    session_id = session_state.get("session_id", "session")
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filepath = os.path.join(RESULTS_DIR, f"{session_id}_{timestamp}.txt")
-
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(f"Session ID: {session_id}\n")
-        f.write(f"Language: {session_state.get('language_code', 'unknown')}\n")
-        f.write(f"Species: {session_state.get('species', 'unknown')}\n")
-        f.write(f"Urgency: {session_state.get('urgency', 'unclassified')}\n")
-        f.write("-" * 50 + "\n\n")
-        for turn in session_state.get("turns", []):
-            role = "You" if turn["role"] == "user" else "Assistant"
-            f.write(f"[{turn.get('timestamp', '')}] {role}: {turn['text']}\n\n")
-    return filepath
-```
-
-Call this once per completed session, not per turn. `utf-8` encoding matters here specifically — these transcripts will contain Hindi/regional-language text, and some systems don't default to UTF-8, which silently corrupts non-English characters.
+`utf-8` encoding is not optional here: these transcripts contain Hindi, Tamil, and other
+Indic text, and a platform default encoding silently corrupts non-English characters.
 
 ---
 
-## 7. Tools each agent needs (function-calling surface)
+## 7. Tool surface
 
-```
-get_kb_entry(species, symptom) -> KBEntry | None       # reads from in-code TRIAGE_KB, §4.1
-classify_urgency(extracted_fields) -> {urgency, matched_entry, missing_info}
-run_safety_check(draft_reply) -> {passed: bool, violations: [...]}
-generate_followup_note(session_state) -> structured note (dict)
-save_conversation(session_state) -> filepath            # §6
-send_note(note, channel, contact) -> delivery confirmation
-[optional] retrieve_general_info(query) -> top-k chunks with sources   # Knowledge Agent only, §5
-```
+The function-calling surface, and the HTTP endpoints in `app.py` that expose it:
 
----
-
-## 8. RAG knowledge base — upload, chunk, store, and the LLM/RAG switch
-
-This is now **implemented** in `backend/rag_store.py` and `backend/main.py`, and in the frontend's new Settings panel. It's entirely separate from the triage KB in §4.1 — this store holds whatever PDFs/MD/DOCX you upload for the Knowledge Agent's general-question answering, and it never influences an urgency decision.
-
-**Ingestion pipeline (`rag_store.py`, fully working, no API key needed):**
-
-```
-upload file (pdf/docx/md/txt)
-   │
-   ▼
-extract_text()   — pypdf for PDF, python-docx for DOCX, plain read for md/txt
-   │
-   ▼
-chunk_text()     — ~220 words per chunk, 40-word overlap, paragraph-aware
-   │
-   ▼
-embed_texts()    — sentence-transformers (all-MiniLM-L6-v2), runs locally
-   │
-   ▼
-saved to backend/kb_store/  — index.json (chunk text + metadata) + vectors.npy
-```
-
-No database server required — it's two flat files on disk. Retrieval (`retrieve()`) embeds the query the same way and does a cosine similarity search (a dot product, since vectors are pre-normalized) over the stored vectors — top-k chunks come back with filename + score.
-
-**Endpoints (`main.py`):**
-
-| Endpoint | Method | Purpose |
+| Function | Module | Endpoint |
 |---|---|---|
-| `/kb/upload` | POST (multipart file) | Ingest one document — extract, chunk, embed, save. Returns `doc_id` + chunk count. |
-| `/kb/documents` | GET | List uploaded documents and their chunk counts |
-| `/kb/documents/{doc_id}` | DELETE | Remove a document and its chunks from the store |
-| `/kb/ask` | POST `{query, mode, language_code}` | **The LLM/RAG switch.** `mode: "llm"` → answered from the model directly, no retrieval. `mode: "rag"` → retrieves top-4 chunks first, answer is grounded in only those chunks. |
+| `classify_urgency(symptoms, species)` | `triage_engine` | *(internal)* |
+| `normalize_symptom(raw)` | `triage_engine` | *(internal)* |
+| `run_safety_check(draft)` | `agents/safety` | *(internal)* |
+| `generate_followup_note(session)` | `agents/note` | *(internal)* |
+| `save_conversation(session)` | `transcript` | `POST /consult/{id}/end` |
+| `process_turn(...)` | `turn_processor` | `POST /consult`, `POST /consult/audio` |
+| `get_session(id)` | `session_store` | `GET /consult/{id}` |
+| `synthesize_speech(text, lang)` | `bhashini_client` | `POST /tts` |
+| `ingest_document(name, bytes)` | `rag_store` | `POST /kb/upload` |
+| `list_documents()` / `delete_document(id)` | `rag_store` | `GET` / `DELETE /kb/documents` |
+| `answer_general_question(q, mode, lang)` | `agents/knowledge` | `POST /kb/ask` |
+| — | — | `GET /health` |
 
-`generate_llm_only_answer()` and `generate_rag_answer()` in `main.py` are the two TODO-wire stubs for this — same pattern as `generate_reply()`, same LLM host, just a different system prompt per mode (see the docstrings in the file for the exact prompt shape). The RAG-mode prompt explicitly tells the model to say "I don't have that information" rather than guessing when retrieval comes back empty or irrelevant — don't skip that instruction, it's what keeps RAG mode from quietly hallucinating when the docs don't cover something.
-
-**Frontend (Settings panel in `index.html`):** a gear-icon toggle reveals a panel with an LLM/RAG switch (radio-style buttons), a file upload + document list, and a text-based "ask" box that calls `/kb/ask` with whichever mode is selected. This is wired to real `fetch()` calls against the backend (not mocked, unlike the voice triage demo above) — run `backend/main.py` for it to work.
-
-**Where this sits relative to the rest of the system:** `/kb/ask` is the Knowledge Agent's endpoint from §2 — a separate path from `/consult` (the triage flow). Nothing here should ever be asked to classify urgency; if a question posed to `/kb/ask` actually describes an active symptom, the right long-term fix is having the Orchestrator route it to `/consult` instead, not answering it here.
+`GET /health` reports whether each API key is configured, which is the fastest way to
+diagnose a deployment that starts but can't reach a model.
 
 ---
 
-## 9. What to build first
+## 8. The RAG knowledge store
 
-1. Triage Engine as a standalone, testable function reading the in-code KB (§4.1) — wrap it in `classify_urgency()`.
-2. Intake Agent + Conversation Agent + Safety Agent as the minimal loop, single language, text-only, no voice yet — all on Groq per §2.1.
-3. `save_conversation()` — trivial, do it early so every test run leaves a trail.
-4. Wire in Bhashini STT/TTS once the text loop is solid.
-5. Note Agent.
-6. Knowledge Agent + RAG (§8) — implemented and ready to use once you add your LLM API key; upload/chunk/embed/retrieve already work standalone.
+Implemented in `rag_store.py`, exposed through `/kb/*`, driven from the frontend's
+Settings panel. Entirely separate from the triage KB (§4.1, §5).
+
+```mermaid
+flowchart TD
+    subgraph ingest["Ingestion — POST /kb/upload"]
+        A["pdf / docx / md / txt"] --> B["extract_text<br/>pypdf, python-docx, or plain read"]
+        B --> C["chunk_text<br/>~220 words, 40-word overlap, paragraph-aware"]
+        C --> D["embed_texts<br/>all-MiniLM-L6-v2, L2-normalized, local"]
+        D --> E["index.json — chunk text + metadata"]
+        D --> F["vectors.npy — aligned embeddings"]
+    end
+
+    subgraph query["Retrieval — POST /kb/ask"]
+        G["query"] --> H["embed the query the same way"]
+        H --> I["dot product over vectors.npy<br/>pre-normalized, so this IS cosine similarity"]
+        I --> J["top-k chunks + filename + score"]
+        J --> K["Knowledge Agent<br/>grounded answer + citations"]
+    end
+
+    E -.-> I
+    F -.-> I
+```
+
+No database server: two flat files on disk. Embeddings run locally via
+`sentence-transformers`, so ingestion and retrieval need no API key — only answer
+*generation* calls Groq.
+
+### The three answer modes
+
+`POST /kb/ask` takes a `mode`, surfaced as a switch in the Settings panel. This exists
+so rule-based and AI-based answering can be compared side by side on the same question.
+
+| Mode | What runs | Model call | Behavior when it can't answer |
+|---|---|---|---|
+| `kb` | Exact/alias dictionary lookup against `TRIAGE_KB` | **None** | "No exact match" — never guesses |
+| `llm` | Model answers from its own knowledge | 1 | May generalize; no citations |
+| `rag` | Retrieve top-4 chunks, then answer from those only | 1 | "I don't have that in the knowledge base" |
+
+That last instruction in the RAG prompt is load-bearing — it is what keeps RAG mode
+from quietly hallucinating when the uploaded documents don't cover a question.
+
+Both AI modes are explicitly forbidden from issuing an urgency classification. If a
+question turns out to describe an active symptom, the prompt directs the user back to a
+proper triage conversation instead of answering.
+
+---
+
+## 9. Failure modes and fallbacks
+
+Every external call in this system can fail, and each one has a defined degradation
+path. Nothing silently disappears.
+
+```mermaid
+flowchart LR
+    subgraph fail["When something breaks"]
+        A["Orchestrator call fails"] --> A2["default to triage"]
+        B["Intake call fails"] --> B2["empty extraction<br/>-> soon + missing_info"]
+        C["Safety call fails"] --> C2["fail CLOSED<br/>-> canned safe message"]
+        D["Conversation call fails"] --> D2["canned reply for that urgency"]
+        E["Note call fails"] --> E2["deterministic SOAP fallback"]
+        F["TTS fails"] --> F2["text-only + tts_error field"]
+        G["Groq key missing"] --> G2["503 with a setup message"]
+        H["ffmpeg missing"] --> H2["RuntimeError, named explicitly"]
+    end
+    style C2 fill:#8b1a1a,stroke:#5a1010,color:#ffffff
+```
+
+| Layer | Guarantee | How it's enforced |
+|---|---|---|
+| Urgency decision | Never an LLM judgment | `triage_engine` is pure Python over a static KB |
+| Species scope | Non-cats never reach triage | Intake sets `species = "other"` → immediate redirect |
+| Draft review | Nothing unreviewed ships | Safety Agent, one regeneration, then a canned message |
+| Safety-check outage | An outage can't skip the guardrail | `run_safety_check` **fails closed** — returns not-passed |
+| Question loop | Cannot run forever | Capped at 3, then escalate to at least `soon` |
+| Emergency handling | Never delayed by a follow-up question | Clarification requires `urgency != "emergency"` |
+| SOAP note | Never half-empty | Missing sections backfilled from the deterministic note |
+| Voice output | Never blocks the text answer | TTS wrapped, failure logged, `tts_error` returned |
+
+The Note Agent's backfill deserves a note of its own: `chat_json` only raises on
+*unparseable* JSON, so a syntactically valid but incomplete response would otherwise
+ship a half-empty SOAP note. Each of the four sections is checked and refilled from the
+deterministic fallback independently.
 
 ---
 
 ## 10. Cat-specific health scenarios (demo set)
 
-This is the independent research-and-design pass behind the cats-only pivot: not
-just relabeling a species-agnostic KB, but identifying where feline presentation of
-a symptom actually changes what "urgent" means. Full entries with red/yellow flags
-and phrasing live in `backend/triage_kb.py`; the six required demo scenarios are
-summarized here alongside the supporting entries added to make the KB coherent.
+Not a relabeled species-agnostic KB — this is the research pass identifying where feline
+presentation actually changes what "urgent" means. Full entries live in `triage_kb.py`.
 
-| Scenario | Typical triage level | Why it's different in cats |
+| Scenario | Typical level | Why it's different in cats |
 |---|---|---|
-| **Urinary obstruction** (`urinary_obstruction`) | Emergency | Far more common in male cats (narrow urethra); a blocked cat can go into fatal kidney failure within 24-48h. This is the single highest-stakes entry in the KB. |
-| **Loss of appetite** (`not_eating`) | Soon → emergency past 24-48h | Cats (especially overweight ones) can develop hepatic lipidosis (fatty liver) from as little as 1-2 days without food - a risk that doesn't apply the same way to most other pets. |
-| **Vomiting** (`vomiting`) | Varies | The key judgment call is distinguishing a normal occasional hairball from a chronic pattern that, in cats, often signals IBD, hyperthyroidism, or kidney disease rather than being dismissed as "just a hairball cat." |
-| **Diarrhoea** (`diarrhea`) | Soon | Same general picture as other species, but kittens dehydrate faster than adult cats, so age materially changes the urgency. |
-| **Breathing difficulty** (`difficulty_breathing`) | Emergency (almost always) | Cats don't pant as a normal behavior the way dogs do - open-mouth breathing at rest is essentially always abnormal, and cats mask respiratory distress until it's severe. |
-| **Skin issues** (`skin_irritation`) | Home → soon | Usually flea allergy or stress-related overgrooming; escalates only with signs of acute allergic reaction (facial swelling, hives + breathing changes). |
+| **Urinary obstruction** (`urinary_obstruction`) | Emergency | Far more common in male cats (narrow urethra); a blocked cat can reach fatal kidney failure in 24–48h. The highest-stakes entry in the KB. |
+| **Loss of appetite** (`not_eating`) | Soon → emergency past 24–48h | Cats, especially overweight ones, can develop hepatic lipidosis from as little as 1–2 days without food — a risk that doesn't apply the same way to other pets. |
+| **Vomiting** (`vomiting`) | Varies | The judgment call is separating a normal occasional hairball from a chronic pattern that in cats often signals IBD, hyperthyroidism, or kidney disease. |
+| **Diarrhoea** (`diarrhea`) | Soon | Similar to other species, but kittens dehydrate faster than adult cats, so age materially changes urgency. |
+| **Breathing difficulty** (`difficulty_breathing`) | Emergency, almost always | Cats don't pant normally the way dogs do — open-mouth breathing at rest is essentially always abnormal, and cats mask respiratory distress until it's severe. |
+| **Skin issues** (`skin_irritation`) | Home → soon | Usually flea allergy or stress overgrooming; escalates only with acute allergic signs (facial swelling, hives plus breathing changes). |
 
-Two supporting entries were added specifically because of a common cat-owner
-confusion point and a cat-specific toxin risk, not carried over from a generic KB:
+Two supporting entries were added for cat-specific reasons, not carried over from a
+generic KB:
 
-- **Constipation** (`constipation`) - owners frequently can't visually distinguish
-  straining-to-urinate from straining-to-defecate. The KB treats these as distinct
-  entries with an explicit note in `constipation`'s guidance to default to the
-  urinary emergency path whenever there's doubt.
-- **Poisoning / toxin ingestion** (`poisoning_ingestion`) - expanded with feline-
-  specific toxins: lilies (severely nephrotoxic even from pollen or vase water,
-  and not well known as a hazard by most owners), permethrin (safe for dogs, toxic
-  to cats - a real and recurring accidental-poisoning source), and onion/garlic.
+- **Constipation** — owners frequently can't tell straining-to-urinate from
+  straining-to-defecate. These are separate entries, and `constipation`'s guidance
+  explicitly defaults to the urinary emergency path whenever there's doubt.
+- **Poisoning / toxin ingestion** — expanded with feline-specific toxins: lilies
+  (severely nephrotoxic even from pollen or vase water, and not widely known as a
+  hazard), permethrin (safe for dogs, toxic to cats — a recurring accidental-poisoning
+  source), and onion/garlic.
 
-The remaining entries (`lethargy`, `limping`, `seizure`, `bloated_abdomen`,
-`eye_injury`, `ear_infection`, `coughing`, `pain_vocalizing`, `trauma_injury`) were
-carried forward and localized for feline presentation - e.g. `bloated_abdomen`'s
-guidance no longer references GDV/bloat, which is a large-breed-dog condition rare
-in cats; a distended feline abdomen more often points to fluid buildup (FIP, heart,
-or liver disease), organomegaly, or parasite load.
+The remaining ten entries — `fever`, `lethargy`, `limping`, `seizure`,
+`bloated_abdomen`, `eye_injury`, `ear_infection`, `coughing`, `pain_vocalizing`,
+`trauma_injury` — were localized for feline presentation. For example
+`bloated_abdomen` no longer references GDV/bloat, a large-breed-dog condition rare in
+cats; a distended feline abdomen more often points to fluid buildup (FIP, heart, or
+liver disease), organomegaly, or parasite load.
 
-Each entry's `questions_to_ask` (vet-reviewed, per symptom) is read by the
-Conversation Agent as phrasing hints for its one allowed clarifying question per
-turn (`agents/conversation.py`'s `_suggested_questions`), and `owner_guidance` feeds
-both the live reply (§3) and the Plan section of the SOAP note (§11).
-
-The same triage content, written in longer explanatory form for retrieval quality,
-is seeded into the RAG knowledge store as `backend/knowledge_docs/*.md` - one file
-per demo scenario, plus a dedicated cat-toxins reference. Alongside those, the
-corpus also includes original general-care documents (kitten care basics,
-vaccination schedule, weight/nutrition, dental health, senior cat health, litter
-box behavior) covering the non-urgent informational questions the Knowledge Agent
-is actually meant to field, per §5. All 13 documents are original writing grounded
-in general veterinary knowledge, not reproduced from any single publisher's
-copyrighted text - see `backend/scripts/seed_kb.py` to ingest them. This is a
-separate corpus from `triage_kb.py` per §5's hard boundary: the RAG copy is for the
-Knowledge Agent's general Q&A, never for the urgency decision itself.
+**18 entries total.** The same content, rewritten in longer explanatory form for
+retrieval quality, is seeded into the RAG store as `knowledge_docs/*.md` — a separate
+corpus per §5's boundary.
 
 ---
 
 ## 11. Consultation note format — SOAP
 
-The Note Agent (`agents/note.py`) writes the end-of-session consultation note in
-**SOAP** format - Subjective / Objective / Assessment / Plan - the standard
-veterinary (and broader clinical) note structure, so it reads naturally to both the
-cat owner and any vet it's shared with:
+`agents/note.py` writes the end-of-session note in **SOAP** format (Subjective /
+Objective / Assessment / Plan), the standard veterinary note structure, so it reads
+naturally to both the cat owner and any vet they share it with.
 
-- **Subjective** — what the owner reported in their own words: symptom(s),
-  duration, severity cues, relevant history (age, indoor/outdoor, prior episodes).
-- **Objective** — observable details from the conversation only (frequency counts,
-  described appearance of vomit/stool/urine, breathing pattern). No physical exam
-  was performed, so this section says so explicitly rather than inventing exam
-  findings or vitals.
-- **Assessment** — the triage impression: matched concern(s) + urgency level,
-  phrased as a possibility or reason to seek care, never a definitive diagnosis.
-- **Plan** — the recommended action matching the urgency level, home-care guidance
-  for the interim (drawn from the matched KB entries' `owner_guidance`, §10), and
-  the specific red-flag signs that mean "stop waiting, seek care now."
+```mermaid
+flowchart LR
+    S["S — Subjective<br/>what the owner reported,<br/>in their own words"] --> O["O — Objective<br/>observable details from the<br/>conversation only"]
+    O --> A["A — Assessment<br/>matched concerns + urgency,<br/>as possibility, never diagnosis"]
+    A --> P["P — Plan<br/>action for this urgency,<br/>interim care, red flags"]
+```
 
-Like every other LLM agent output in this system, the Note Agent is a summarizer,
-not a decision-maker - it organizes what the deterministic Triage Engine and the
-rest of the session state already established, and a fixed, non-LLM fallback note
-(same SOAP shape) covers the case where the Groq call itself fails.
+| Section | Source | Constraint |
+|---|---|---|
+| **Subjective** | `turns`, `extracted_symptoms`, breed/age | Owner's own words, symptoms, duration, severity cues |
+| **Objective** | Conversation only | States plainly that no physical exam was performed — never invents findings or vitals |
+| **Assessment** | `urgency` + `matched_kb_entries` | Phrased as a possibility or reason to seek care, never a definitive diagnosis |
+| **Plan** | `urgency` + `owner_guidance` (§4.1) | Recommended action, interim home care, and the specific signs meaning "stop waiting" |
+
+Like every other LLM output here, the Note Agent is a **summarizer, not a
+decision-maker** — it organizes what the deterministic engine and the session state
+already established. A fixed non-LLM fallback in the same SOAP shape covers a failed
+Groq call, and any individual blank section is backfilled from it (§9).
+
+The frontend renders the note as a distinct message bubble (`kind: "note"`) once
+`is_final` is true.
+
+---
+
+## 12. Configuration and deployment
+
+All configuration is env-driven through `config.py`, loaded from `backend/.env`
+(template in `.env.example`).
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GROQ_API_KEY` | — | Required for every LLM agent and English STT |
+| `BHASHINI_API_KEY` | — | Required for Indic STT and all TTS; the app runs text-only without it |
+| `*_MODEL` | see §2.1 | Per-agent model override |
+| `MAX_CLARIFYING_QUESTIONS` | `3` | Clarifying-loop cap (§3) |
+| `RAG_TOP_K` | `4` | Chunks retrieved per RAG answer |
+| `RAG_CHUNK_WORDS` / `RAG_CHUNK_OVERLAP_WORDS` | `220` / `40` | Chunking (§8) |
+| `EMBEDDING_MODEL_NAME` | `all-MiniLM-L6-v2` | Local embedding model |
+| `CORS_ORIGINS` | localhost:3000, :5500 | Comma-separated allowed origins |
+| `RESULTS_DIR` / `KB_STORE_DIR` | `results` / `kb_store` | On-disk paths |
+| `PORT` | `8000` | Injected by most PaaS hosts |
+
+**Host binding is derived, not hardcoded.** The presence of `PORT` is used as the
+"we're deployed" signal: `HOST` becomes `0.0.0.0` and reload is disabled. Locally,
+`python app.py` binds `127.0.0.1` with reload on. This matters — binding `127.0.0.1` in
+a container accepts only loopback connections and is silently unreachable from outside,
+which is what previously surfaced as a 404 on Railway (not a routing or CORS problem).
+
+The `Procfile` seeds the RAG store before starting the server, so a fresh deployment
+comes up with `knowledge_docs/` already ingested:
+
+```
+web: python scripts/seed_kb.py && python app.py
+```
+
+The frontend reads `NEXT_PUBLIC_API_BASE_URL` (default `http://127.0.0.1:8000`).
+
+---
+
+## 13. Testing
+
+```bash
+cd backend
+python -m unittest discover -s tests
+```
+
+- `tests/test_triage_engine.py` — the safety-critical surface. It runs with no network,
+  no API key, and no mocks, because the engine has no dependencies to mock. Every rule
+  in §4.1 is asserted here: red-flag escalation, negated-cue filtering, bare-symptom
+  flags, multi-symptom worst-case selection, and unrecognized-symptom handling.
+- `tests/test_orchestrator.py` — the routing fast paths from §3, which are pure logic
+  and reachable without an LLM call.
+
+The agent modules themselves are thin prompt wrappers over `groq_client`; the behavior
+worth pinning down in tests is the deterministic logic they sit around.

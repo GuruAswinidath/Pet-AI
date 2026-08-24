@@ -12,17 +12,26 @@ why several symptoms mean something different in a cat than in a dog.
 
 ## How it works
 
-```
-Cat owner (voice or text)
-   │
-   ▼
-Speech-to-text (Bhashini, if voice)
-   │
-   ▼
-Orchestrator → Intake Agent → Triage Engine → Conversation Agent → Safety Agent
-   │
-   ▼
-Guidance reply (text + speech) + SOAP consultation note
+```mermaid
+flowchart TD
+    A(["Cat owner — voice or text"]) --> B{"voice?"}
+    B -->|yes, English| C["Groq Whisper STT"]
+    B -->|"yes, Indic language"| D["Bhashini ASR"]
+    B -->|no| E
+    C --> E["Orchestrator<br/>triage or general question?"]
+    D --> E
+    E -->|general question| K["Knowledge Agent<br/>RAG over cat-care docs"]
+    E -->|triage| F["Intake Agent<br/>free text to structured fields"]
+    F --> G["Triage Engine<br/>DETERMINISTIC — no LLM"]
+    G -->|needs more info| H["Conversation Agent<br/>one clarifying question"]
+    H -.->|user replies| F
+    G -->|"urgency decided"| I["Conversation Agent<br/>phrase the reply"]
+    I --> J["Safety Agent<br/>veto power over the draft"]
+    J --> L["Note Agent<br/>SOAP consultation note"]
+    L --> M(["Reply, text + speech<br/>+ note you can take to a vet"])
+    K --> M
+
+    style G fill:#1f6f43,stroke:#0d3f26,color:#ffffff
 ```
 
 - **Triage Engine** — a plain deterministic Python function, not an LLM call.
@@ -33,9 +42,11 @@ Guidance reply (text + speech) + SOAP consultation note
   handle the conversational parts: extracting structured symptoms from
   free text, phrasing replies naturally in the user's language, and a
   Safety Agent that reviews every draft reply before it goes out.
-- **Voice** in/out is handled by Bhashini's ASR/TTS for English + Hindi,
+- **Voice in** routes by language: English goes to Groq's Whisper (faster and
+  cheaper, and English doesn't need Indic-specific models), while Hindi,
   Tamil, Telugu, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi,
-  and Odia.
+  and Odia go to Bhashini's ASR. **Voice out** is Bhashini for every
+  language, so the assistant keeps one consistent voice.
 - **A separate RAG knowledge base** answers general, non-urgent cat-care
   questions ("is it normal for kittens to lose baby teeth?") — kept
   deliberately apart from the triage KB so general Q&A can never influence
@@ -56,8 +67,10 @@ cat-specific triage knowledge base are documented in
 
 - Python 3.12+
 - Node.js 20+
+- [ffmpeg](https://ffmpeg.org/download.html) on your `PATH` — browser audio arrives as
+  WebM and is normalized to 16 kHz mono WAV before transcription (voice input only)
 - A [Groq API key](https://console.groq.com)
-- A [Bhashini API key](https://bhashini.gov.in) (for voice input/output — the app runs text-only without one)
+- A [Bhashini API key](https://bhashini.gov.in) (for Indic voice input and all voice output — the app runs text-only without one)
 
 ## Clone
 
@@ -113,10 +126,11 @@ python -m unittest discover -s tests
 
 | Endpoint | Purpose |
 |---|---|
+| `GET /health` | Liveness plus whether each API key is configured |
 | `POST /consult` | Send a text message, get back a triage turn |
-| `POST /consult/audio` | Same, but from an uploaded audio clip (transcribed via Bhashini) |
+| `POST /consult/audio` | Same, from an uploaded audio clip (Groq for English, Bhashini otherwise) |
 | `GET /consult/{session_id}` | Read back session state |
 | `POST /consult/{session_id}/end` | Close a session and write its transcript |
 | `POST /tts` | Standalone text-to-speech (e.g. a "replay" button) |
 | `POST /kb/upload`, `GET /kb/documents`, `DELETE /kb/documents/{id}` | Manage the general-Q&A RAG knowledge base |
-| `POST /kb/ask` | Ask a general cat-care question (LLM-only or RAG-grounded) |
+| `POST /kb/ask` | Ask a general cat-care question in one of three modes: `kb` (plain rules lookup, no model), `llm` (model only), or `rag` (grounded in your uploaded docs) |
