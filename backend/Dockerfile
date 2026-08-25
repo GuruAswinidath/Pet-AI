@@ -18,6 +18,6 @@ COPY . .
 ENV HOST=0.0.0.0
 ENV PORT=8080
 
-# Rebuild the generated RAG store from the tracked knowledge documents before serving.
-CMD ["sh", "-c", "python scripts/seed_kb.py && exec python app.py"]
+# Start the application
+CMD ["python", "app.py"]
 
