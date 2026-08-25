@@ -1,0 +1,10 @@
+Session ID: 83a8d607-c830-4ec4-aeb5-da602e371eef
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T13:16:37.912854+00:00] You: My cat vomited once this morning after eating some grass, but she also just had a seizure a minute ago and was convulsing.
+
+[2026-08-21T13:16:42.809458+00:00] Assistant: 
+

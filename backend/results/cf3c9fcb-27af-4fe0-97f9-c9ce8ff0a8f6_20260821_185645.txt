@@ -1,0 +1,11 @@
+Session ID: cf3c9fcb-27af-4fe0-97f9-c9ce8ff0a8f6
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T13:26:38.754761+00:00] You: My cat vomited once this morning after eating some grass, but she also just had a seizure a minute ago and was convulsing.
+
+[2026-08-21T13:26:44.546034+00:00] Assistant: {
+  "reply": "I’m really sorry your cat looks like it may be having a seizure and vomiting – this needs urgent attention. Please take your cat straight to the nearest emergency veterinary clinic or call one right away. While you’re getting there, keep the area clear of objects the cat could hit and avoid putting your hands near its mouth. You can withhold
+

@@ -1,0 +1,10 @@
+Session ID: e0f74bfb-d1b4-4b27-829f-6434ccb490c4
+Language: en-IN
+Species: other
+Urgency: None
+--------------------------------------------------
+
+[2026-08-21T13:16:45.463506+00:00] You: My dog has been limping since yesterday and won't put weight on his back leg.
+
+[2026-08-21T13:16:52.515548+00:00] Assistant: I'm built specifically to help with cats right now, so I can't safely triage a different animal here. Please contact your vet directly, or start a new chat to ask about a cat.
+

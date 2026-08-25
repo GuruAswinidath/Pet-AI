@@ -1,0 +1,10 @@
+Session ID: d12a0d5d-492b-4437-8b9f-3f70d5ae7eec
+Language: en-IN
+Species: other
+Urgency: None
+--------------------------------------------------
+
+[2026-08-21T08:52:01.859131+00:00] You: he keeps limping on his front leg
+
+[2026-08-21T08:52:03.271357+00:00] Assistant: I'm built specifically to help with cats right now, so I can't safely triage a different animal here. Please contact your vet directly, or start a new chat to ask about a cat.
+

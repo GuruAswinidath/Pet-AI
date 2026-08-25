@@ -1,0 +1,10 @@
+Session ID: f4356dcc-1758-42d4-bff6-48902739f4e0
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T13:27:22.468474+00:00] You: The cat is breathing with her mouth open and seems to be struggling to breathe.
+
+[2026-08-21T13:27:25.063479+00:00] Assistant: I’m really sorry your cat is having trouble breathing. Open‑mouth or labored breathing in a cat is never normal and needs immediate veterinary care. Please take her to an emergency vet clinic right away, even if she seems otherwise okay. If you can, call ahead so the clinic is prepared for her arrival.
+

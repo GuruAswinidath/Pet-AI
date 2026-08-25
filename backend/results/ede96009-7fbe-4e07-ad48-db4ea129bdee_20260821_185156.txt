@@ -1,0 +1,10 @@
+Session ID: ede96009-7fbe-4e07-ad48-db4ea129bdee
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T13:21:50.746470+00:00] You: My cat vomited once this morning after eating some grass, but she also just had a seizure a minute ago and was convulsing.
+
+[2026-08-21T13:21:55.142602+00:00] Assistant: I’m really sorry your cat is having a seizure and vomiting – this needs immediate veterinary care. Please take her to
+

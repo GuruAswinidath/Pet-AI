@@ -1,0 +1,10 @@
+Session ID: ff92b407-fe11-4905-ba4e-a19c894b526a
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T14:12:43.580882+00:00] You: My male cat has been going in and out of the litter box every few minutes but barely anything comes out, and he's crying while he's in there.
+
+[2026-08-21T14:12:48.702781+00:00] Assistant: I’m really sorry your cat is in pain. This could be a serious urinary problem that needs urgent care. Please bring your cat to an emergency veterinary clinic right away. Time is important, so don’t wait.
+

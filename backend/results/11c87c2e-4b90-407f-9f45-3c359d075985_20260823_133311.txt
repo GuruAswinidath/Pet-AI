@@ -1,0 +1,10 @@
+Session ID: 11c87c2e-4b90-407f-9f45-3c359d075985
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-23T08:03:07.408411+00:00] You: my cat has been vomiting since this morning
+
+[2026-08-23T08:03:11.178915+00:00] Assistant: It sounds like your cat may have had a hairball‑type episode. You can withhold food for a few hours (but keep fresh water available), then offer a small amount of a bland food such as boiled chicken or a prescription gastrointestinal diet. If the vomiting repeats, your cat stops eating, or you notice any blood, call the vet today. Even if it’s just a single mild episode, keep an eye on it and consider a routine check‑up if it happens a few times each month, as that can sometimes signal an underlying issue.
+

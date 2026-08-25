@@ -1,0 +1,10 @@
+Session ID: f6c04d25-db23-444f-aef0-5fced69096a5
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T13:31:10.144136+00:00] You: My cat has been licking one spot on her belly a lot for the past two days, no other symptoms, still eating and playing normally, and she's up to date on flea prevention.
+
+[2026-08-21T13:31:12.395864+00:00] Assistant: It sounds like your cat’s skin irritation is likely something you can watch at home for now. Try to keep the area clean and dry, and stop excessive licking or scratching—using a cone if needed. If the skin becomes bald, raw, or develops many small scabs, a routine vet visit is a good idea. Call the vet right away if you notice facial swelling or any breathing trouble.
+

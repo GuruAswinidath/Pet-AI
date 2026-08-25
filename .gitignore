@@ -4,8 +4,6 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/*.pyc
 backend/.env
-backend/kb_store/
-backend/results/
 
 # OS
 .DS_Store

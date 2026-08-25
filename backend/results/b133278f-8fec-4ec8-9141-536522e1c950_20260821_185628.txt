@@ -1,0 +1,10 @@
+Session ID: b133278f-8fec-4ec8-9141-536522e1c950
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T13:26:24.681104+00:00] You: My cat hasn't been eating much today.
+
+[2026-08-21T13:26:27.246879+00:00] Assistant: It’s good that you’ve noticed the change right away. Try offering one of your cat’s favorite foods in a quiet spot and keep a simple log of how much is actually eaten. If the appetite doesn’t improve after about 24 hours, or if you see vomiting, diarrhea, or your cat starts hiding more than usual, it’s best to have a vet look at them the same day. Otherwise, continue to monitor and keep offering small, appealing meals.
+

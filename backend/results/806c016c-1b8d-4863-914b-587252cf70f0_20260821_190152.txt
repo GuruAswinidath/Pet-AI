@@ -1,0 +1,10 @@
+Session ID: 806c016c-1b8d-4863-914b-587252cf70f0
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T13:31:50.155126+00:00] You: The cat is breathing with her mouth open and seems to be struggling to breathe.
+
+[2026-08-21T13:31:52.245653+00:00] Assistant: Your cat’s open‑mouth, labored breathing is a serious sign and needs emergency veterinary care right away. Take her to the nearest vet or emergency clinic immediately – even if she still seems alert. Do not try to treat this at home; prompt professional evaluation is essential.
+

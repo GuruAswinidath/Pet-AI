@@ -1,0 +1,10 @@
+Session ID: 27c90ed9-3c91-4c57-a923-20e831f4a6e3
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T13:36:00.202842+00:00] You: My cat hasn't been eating much today.
+
+[2026-08-21T13:36:02.846492+00:00] Assistant: It’s probably okay to keep an eye on your cat at home for now. Try offering a favorite food and note exactly how much is eaten; cats can develop a serious liver issue if they go without food for more than a day or two. If your cat hasn’t eaten for over 24 hours, or if you notice vomiting, diarrhoea, or the cat is hiding more than usual, call your vet right away.
+

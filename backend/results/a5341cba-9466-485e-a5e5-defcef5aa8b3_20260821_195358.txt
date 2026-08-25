@@ -1,0 +1,10 @@
+Session ID: a5341cba-9466-485e-a5e5-defcef5aa8b3
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T14:23:51.849659+00:00] You: My male cat has been going in and out of the litter box every few minutes but barely anything comes out, and he's crying while he's in there.
+
+[2026-08-21T14:23:58.272023+00:00] Assistant: Your cat is straining to urinate and may have a blocked urethra, which can become life‑threatening very quickly. Please take him to a veterinarian or an emergency animal clinic right now—do not wait. If you can, bring him in as soon as possible for urgent care.
+

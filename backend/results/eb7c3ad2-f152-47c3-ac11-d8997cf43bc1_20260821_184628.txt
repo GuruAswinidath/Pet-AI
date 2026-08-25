@@ -1,0 +1,10 @@
+Session ID: eb7c3ad2-f152-47c3-ac11-d8997cf43bc1
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T13:16:24.162442+00:00] You: My cat hasn't been eating much today.
+
+[2026-08-21T13:16:27.065594+00:00] Assistant: It sounds like your cat has stopped eating today, which can be concerning but you can watch at home for now. Try offering a favorite wet food or a warmed‑up treat and keep a simple log of how much is actually eaten. If the lack of appetite lasts more than 24 hours, or if vomiting, diarrhoea or hiding appear, give your vet a call right away.
+

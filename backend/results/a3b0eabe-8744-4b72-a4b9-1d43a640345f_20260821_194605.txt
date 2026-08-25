@@ -1,0 +1,10 @@
+Session ID: a3b0eabe-8744-4b72-a4b9-1d43a640345f
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T14:16:02.101370+00:00] You: My male cat has been going in and out of the litter box every few minutes but barely anything comes out, and he is crying while he is in there.
+
+[2026-08-21T14:16:04.960807+00:00] Assistant: I’m really sorry your cat is crying and straining. This could be a urinary blockage, which needs immediate veterinary care. Please take your cat to an emergency vet clinic right away.
+

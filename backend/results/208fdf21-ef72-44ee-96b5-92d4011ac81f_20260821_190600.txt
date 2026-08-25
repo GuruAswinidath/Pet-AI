@@ -1,0 +1,10 @@
+Session ID: 208fdf21-ef72-44ee-96b5-92d4011ac81f
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T13:35:57.048766+00:00] You: My male cat has been going in and out of the litter box every few minutes for the last hour but barely anything comes out, and he's crying while he's in there.
+
+[2026-08-21T13:35:59.795072+00:00] Assistant: Your cat is showing signs of a possible urinary blockage, which can become life‑threatening very quickly. Please take him to a veterinarian or an emergency animal clinic right now—do not wait. If you can, bring a sample of his urine and note how long this has been happening, as it will help the vet. Stay calm and get help immediately.
+

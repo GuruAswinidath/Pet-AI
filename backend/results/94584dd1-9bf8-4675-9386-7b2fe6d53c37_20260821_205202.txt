@@ -1,0 +1,26 @@
+Session ID: 94584dd1-9bf8-4675-9386-7b2fe6d53c37
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T15:21:31.313546+00:00] You: hello hi, my cat is not eating food from past few days. why?
+
+[2026-08-21T15:21:38.544206+00:00] Assistant: It’s probably okay to keep an eye on her at home for now, but loss of appetite can become serious in cats quickly. Offer her favorite food and note exactly how much she eats each meal. If she goes more than 24 hours without eating, or if she starts vomiting, has diarrhea, or begins hiding, call your vet right away.
+
+[2026-08-21T15:21:39.747344+00:00] You: yeah it was drinking milk and it's body was little bit hot.
+
+[2026-08-21T15:21:43.270041+00:00] Assistant: It sounds like your cat isn’t eating and feels a little warm. Try offering a favorite wet food or a tasty treat and note exactly how much is eaten each day. If she goes more than 24 hours without eating, or if the warmth is accompanied by vomiting, diarrhea, hiding, or lethargy, call the vet that same day. Otherwise keep watching and make sure she stays hydrated.
+
+[2026-08-21T15:21:44.562611+00:00] You: yes
+
+[2026-08-21T15:21:46.920068+00:00] Assistant: It sounds like your cat isn’t eating and feels a little warm. Try offering a favorite, highly‑palatable food and note exactly how much is eaten; if she goes more than 24 hours without eating, or if the warmth is accompanied by vomiting, diarrhea, hiding or lethargy, call the vet that day. A true fever in a cat is best confirmed with a thermometer, and if it lasts more than a day or two or shows up with any other sign, a veterinary check‑up is recommended. Otherwise, keep a close eye on her appetite and temperature and let you know if anything changes.
+
+[2026-08-21T15:21:47.567495+00:00] You: yes
+
+[2026-08-21T15:21:53.429143+00:00] Assistant: It sounds like your cat isn’t eating and feels a little warm. Try offering a favorite wet food or a tasty treat and keep a simple log of how much is actually eaten; if the cat goes more than 24 hours without any food, or you notice vomiting, diarrhoea or the cat hiding, call the vet the same day. A true fever in a cat is best confirmed with a thermometer, but if the warmth lasts more than a day or two, or is accompanied by any other sign such as not eating or lethargy, it’s time to have the vet look at her. Otherwise, keep an eye on her appetite and temperature and let her rest while you monitor closely.
+
+[2026-08-21T15:21:54.629077+00:00] You: yes
+
+[2026-08-21T15:22:01.681364+00:00] Assistant: It’s probably okay to keep an eye on her at home for now, but watch closely. Offer a favorite wet food or treat and note exactly how much she actually eats – if she goes more than 24 hours without eating, or if she starts vomiting, has diarrhea, or is hiding, call the vet today. A “warm” feel isn’t a reliable fever check; if you can get a temperature reading and it’s truly high, or if the warmth lasts more than a day or two together with not eating or lethargy, have her examined promptly.
+

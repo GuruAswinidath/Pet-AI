@@ -1,0 +1,10 @@
+Session ID: 63fc5fa5-6fcf-47b5-94c5-341ee2e0c2e6
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T13:31:00.199058+00:00] You: My male cat has been going in and out of the litter box every few minutes for the last hour but barely anything comes out, and he's crying while he's in there.
+
+[2026-08-21T13:31:02.955151+00:00] Assistant: Your cat is straining to urinate and only a tiny amount is coming out, which can be life‑threatening. Please take her to a veterinarian or an emergency animal clinic right away – do not wait. This situation can become fatal within a day or two, so prompt care is essential.
+

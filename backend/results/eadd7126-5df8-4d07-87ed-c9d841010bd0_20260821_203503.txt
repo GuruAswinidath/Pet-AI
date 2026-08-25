@@ -1,0 +1,26 @@
+Session ID: eadd7126-5df8-4d07-87ed-c9d841010bd0
+Language: en-IN
+Species: cat
+Urgency: soon
+--------------------------------------------------
+
+[2026-08-21T15:04:47.718962+00:00] You: hello hi, my cat is not eating food from past few days. why?
+
+[2026-08-21T15:04:52.151851+00:00] Assistant: It’s probably okay to keep watching your cat at home for now, but loss of appetite can become serious quickly in cats. Offer a favorite food and note exactly how much she eats each meal. If she goes more than 24 hours without eating, or if vomiting, diarrhea, or hiding appear, call the vet right away.
+
+[2026-08-21T15:04:52.820816+00:00] You: yeah it was drinking milk and it's body was little bit hot.
+
+[2026-08-21T15:04:55.105989+00:00] Assistant: Has your cat’s temperature been checked, or do you notice how warm they feel compared to normal?
+
+[2026-08-21T15:04:55.105989+00:00] You: yes
+
+[2026-08-21T15:04:56.792033+00:00] Assistant: How high does the fever seem to be—have you noticed if the cat feels very warm to the touch or if you can feel a noticeable rise in its body temperature?
+
+[2026-08-21T15:04:56.792033+00:00] You: yes
+
+[2026-08-21T15:04:58.463509+00:00] Assistant: Can you tell me if you’ve measured your cat’s temperature or noticed how hot she feels to the touch?
+
+[2026-08-21T15:04:58.463509+00:00] You: yes
+
+[2026-08-21T15:05:01.507144+00:00] Assistant: It would be best to book a vet appointment within the next day or two. In cats, not eating for more than 24‑48 hours can quickly lead to a serious liver problem, so try offering a favorite food and note exactly how much she eats. If she goes another day without eating, or if the fever, vomiting, diarrhea, or hiding get worse, consider seeing the vet the same day.
+

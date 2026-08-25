@@ -1,0 +1,10 @@
+Session ID: 15ecfddd-f092-453a-88b2-4eb47e4549a9
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T13:31:13.080404+00:00] You: My cat vomited once this morning after eating some grass, but she also just had a seizure a minute ago and was convulsing.
+
+[2026-08-21T13:31:15.269682+00:00] Assistant: Your cat needs urgent veterinary care right now—please take her to an emergency clinic immediately. In the meantime, keep her safe by clearing the area so she can’t hit anything during the seizure and do not try to put anything in her mouth. If you can, withhold food (but not water) until you get to the vet.
+

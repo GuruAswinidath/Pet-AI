@@ -1,0 +1,10 @@
+Session ID: 93078ac6-6f12-45db-a788-136b7ac63748
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-23T08:00:44.759861+00:00] You: yes my cat is not eating food from past 2 days? what is the reason?
+
+[2026-08-23T08:00:47.981842+00:00] Assistant: It’s probably okay to keep an eye on your cat at home for now. Offer a tiny bit of a favorite food and see if they’ll eat it, and note how many meals are missed and whether they’re still drinking water normally. If the appetite doesn’t improve, they stop drinking, become very lethargic, or start vomiting, give your vet a call right away.
+

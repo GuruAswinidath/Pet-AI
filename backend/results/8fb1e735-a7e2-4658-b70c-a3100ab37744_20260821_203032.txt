@@ -1,0 +1,26 @@
+Session ID: 8fb1e735-a7e2-4658-b70c-a3100ab37744
+Language: en-IN
+Species: cat
+Urgency: soon
+--------------------------------------------------
+
+[2026-08-21T14:57:27.448188+00:00] You: hello hi, my cat is not eating food from past few days. why?
+
+[2026-08-21T14:57:30.318249+00:00] Assistant: It’s probably okay to keep an eye on them at home for now. Offer a tiny bit of their favorite food and see if they’ll eat it, and note how many meals are missed and whether they’re still drinking water normally. If they stop drinking, become very lethargic, or the loss of appetite continues for more than a few days, give your vet a call.
+
+[2026-08-21T14:58:02.111943+00:00] You: yeah it was drinking milk and it's body was little bit hot.
+
+[2026-08-21T14:58:05.336902+00:00] Assistant: Did you notice your cat feeling warm to the touch, or was there a slight rise in its body temperature?
+
+[2026-08-21T15:00:00.343561+00:00] You: yes
+
+[2026-08-21T15:00:03.212901+00:00] Assistant: Has your cat felt unusually warm overall or shown any other signs like shivering, lethargy, or a higher temperature when you touch its body?
+
+[2026-08-21T15:00:16.288465+00:00] You: yes
+
+[2026-08-21T15:00:19.353363+00:00] Assistant: Is your cat’s body feeling noticeably warmer than usual, like it might have a fever?
+
+[2026-08-21T15:00:27.537483+00:00] You: yes
+
+[2026-08-21T15:00:30.918276+00:00] Assistant: It sounds like your cat isn’t eating and feels a bit warm. Try offering a tiny spoonful of a favorite food and note how many meals are missed, while keeping fresh water always available. Keep your cat in a quiet, cool spot and watch if the warmth continues or they become unusually lethargic. It would be wise to schedule a vet visit within the next day or two for a proper check‑up. If they stop drinking, become very hot, or develop other concerning signs, seek veterinary care sooner.
+

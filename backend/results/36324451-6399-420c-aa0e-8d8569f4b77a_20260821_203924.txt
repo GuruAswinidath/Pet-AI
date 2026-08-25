@@ -1,0 +1,10 @@
+Session ID: 36324451-6399-420c-aa0e-8d8569f4b77a
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T15:09:20.524673+00:00] You: hello hi, my cat is not eating food from past few days. why?
+
+[2026-08-21T15:09:23.823935+00:00] Assistant: It’s probably okay to keep an eye on her at home for now, but loss of appetite can become serious in cats quickly. Offer a favorite food and note exactly how much she eats each meal. If she goes more than 24 hours without eating, or if vomiting, diarrhea, or hiding appear, call your vet right away for a same‑day visit.
+

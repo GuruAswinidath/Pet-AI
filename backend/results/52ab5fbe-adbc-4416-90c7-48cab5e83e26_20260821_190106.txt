@@ -1,0 +1,10 @@
+Session ID: 52ab5fbe-adbc-4416-90c7-48cab5e83e26
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T13:31:03.901266+00:00] You: My cat hasn't been eating much today.
+
+[2026-08-21T13:31:05.757406+00:00] Assistant: It’s probably okay to keep an eye on her for now, but loss of appetite can become serious in cats quickly. Offer a favorite food and note exactly how much she eats; if she goes more than 24 hours without eating, or if vomiting, diarrhea, or hiding appear, treat it as a same‑day issue and contact your vet right away.
+

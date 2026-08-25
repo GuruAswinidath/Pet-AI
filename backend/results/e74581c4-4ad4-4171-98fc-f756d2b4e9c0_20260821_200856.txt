@@ -1,0 +1,14 @@
+Session ID: e74581c4-4ad4-4171-98fc-f756d2b4e9c0
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T14:37:06.074885+00:00] You: my cat is not eating food from past 3 days.
+
+[2026-08-21T14:37:09.218053+00:00] Assistant: It sounds like your cat may just be a bit picky right now. Try offering a tiny spoonful of a favorite food and keep track of any meals missed and whether water intake stays normal. If the appetite doesn’t improve over the next day or two, or if they become very lethargic, stop drinking, or start vomiting, give your vet a call.
+
+[2026-08-21T14:38:51.428654+00:00] You: yes it was taking water normally.
+
+[2026-08-21T14:38:55.523249+00:00] Assistant: It’s probably okay to keep an eye on your cat at home for now. Offer a tiny spoonful of a favorite food and see if they’ll eat it, and note how many meals are missed and whether they’re still drinking water normally. If the appetite doesn’t improve over the next few days, or if they become very lethargic, start vomiting, or stop drinking, give your vet a call.
+

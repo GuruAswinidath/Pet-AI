@@ -1,0 +1,14 @@
+Session ID: 52ab5fbe-adbc-4416-90c7-48cab5e83e26
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T13:31:03.901266+00:00] You: My cat hasn't been eating much today.
+
+[2026-08-21T13:31:05.757406+00:00] Assistant: It’s probably okay to keep an eye on her for now, but loss of appetite can become serious in cats quickly. Offer a favorite food and note exactly how much she eats; if she goes more than 24 hours without eating, or if vomiting, diarrhea, or hiding appear, treat it as a same‑day issue and contact your vet right away.
+
+[2026-08-21T13:31:06.570902+00:00] You: It's been about a day and a half now. She's a bit overweight but otherwise seems her normal self, no vomiting or hiding.
+
+[2026-08-21T13:31:09.462075+00:00] Assistant: It’s probably okay to watch your cat at home for now, but keep a close eye on eating. Offer a favorite food and note exactly how much is eaten; cats can develop a serious liver issue if they go without food for more than a day or two. If your cat hasn’t eaten for over 24 hours, or if you notice vomiting, diarrhea, or that they’re hiding more than usual, call your vet right away.
+

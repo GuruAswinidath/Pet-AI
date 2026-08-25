@@ -1,0 +1,10 @@
+Session ID: 02426ada-fd12-4e66-b2b9-7574fa8d50c6
+Language: en-IN
+Species: cat
+Urgency: emergency
+--------------------------------------------------
+
+[2026-08-21T14:22:07.330015+00:00] You: My male cat has been going in and out of the litter box every few minutes but barely anything comes out, and he is crying while he is in there.
+
+[2026-08-21T14:22:12.249805+00:00] Assistant: I’m really sorry your cat is having trouble urinating—this can become life‑threatening very quickly. Please take him to a veterinarian or an emergency animal clinic right away; do not wait at home. If you can, bring a sample of his urine and let the staff know he’s a male and is straining with little or no output.
+

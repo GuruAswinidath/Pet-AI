@@ -1,0 +1,10 @@
+Session ID: 9d94edb4-ed7a-41b9-97b8-a2263f77b52a
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-21T15:10:06.464250+00:00] You: hello hi, my cat is not eating food from past few days. why?
+
+[2026-08-21T15:10:10.781642+00:00] Assistant: It sounds like your cat isn’t eating much, which can become serious if it goes on for more than a day or two. Try offering a favorite wet food or a small amount of warm broth and note exactly how much is eaten each meal. If the lack of appetite continues past 24 hours, or you notice vomiting, diarrhoea, or your cat is hiding more than usual, call your vet right away. Otherwise, keep monitoring and keep offering tempting foods while watching for any changes.
+

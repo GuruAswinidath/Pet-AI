@@ -1,0 +1,10 @@
+Session ID: 424f5990-5cef-4e64-a918-0a89ed61158f
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-23T12:58:03.658219+00:00] You: hello, ,my cat is not eating food from 2 days?
+
+[2026-08-23T12:58:09.020106+00:00] Assistant: It’s probably okay to keep an eye on her at home for now, but cats can develop a serious liver problem if they go without food for more than a day or two. Try offering a favorite wet food or a warm, strong‑smelling treat and note exactly how much she eats. If she still hasn’t eaten after 24 hours, or if she starts vomiting, has diarrhoea, or is hiding more than usual, call your vet right away for a same‑day check‑up.
+

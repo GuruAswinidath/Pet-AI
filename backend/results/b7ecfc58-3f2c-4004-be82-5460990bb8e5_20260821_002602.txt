@@ -1,0 +1,10 @@
+Session ID: b7ecfc58-3f2c-4004-be82-5460990bb8e5
+Language: en-IN
+Species: cat
+Urgency: home
+--------------------------------------------------
+
+[2026-08-20T18:55:57.641305+00:00] You: my cat is not eating food from past few days.
+
+[2026-08-20T18:56:01.238055+00:00] Assistant: It sounds like your cat’s appetite is a bit low, which can often be watched at home. Try offering a very small amount of a favorite food and note how many meals are missed while making sure water intake stays normal. If the cat continues to refuse food for a couple of days, becomes very lethargic, vomits, or shows signs of dehydration, give your vet a call.
+
