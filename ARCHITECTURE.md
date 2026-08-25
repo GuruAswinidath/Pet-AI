@@ -752,8 +752,10 @@ All configuration is env-driven through `config.py`, loaded from `backend/.env`
 a container accepts only loopback connections and is silently unreachable from outside,
 which is what previously surfaced as a 404 on Railway (not a routing or CORS problem).
 
-The `Procfile` seeds the RAG store before starting the server, so a fresh deployment
-comes up with `knowledge_docs/` already ingested:
+The `Procfile` and `Dockerfile` both seed the RAG store before starting the server, so
+a fresh deployment comes up with `knowledge_docs/` already ingested. This keeps the
+generated `kb_store/` files out of Git while ensuring Docker-based deployments behave
+the same as Procfile-based deployments:
 
 ```
 web: python scripts/seed_kb.py && python app.py
